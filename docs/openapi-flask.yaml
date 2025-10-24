@@ -1,0 +1,752 @@
+openapi: 3.0.3
+
+info:
+  title: Flask MT5 Microservice API
+  description: |
+    Flask microservice for reading MetaTrader 5 indicator data.
+    
+    This service provides a REST API interface to MT5 custom indicators:
+    - Fractal Horizontal Line_V5.mq5 (6 horizontal support/resistance lines)
+    - Fractal Diagonal Line_V4.mq5 (6 diagonal trendlines)
+    
+    **Architecture:**
+    - Flask 3.0 + Python 3.11
+    - MetaTrader5 library for MT5 integration
+    - Reads indicator buffers from custom MQL5 indicators
+    - Containerized with Docker
+    
+    **Authentication:**
+    All endpoints (except /api/health) require X-API-Key header authentication.
+    
+    **Rate Limiting:**
+    This service does not implement rate limiting. Rate limiting is handled by the Next.js API layer.
+    
+    **Important Notes:**
+    - MT5 terminal must be running and logged in
+    - Custom indicators must be attached to a chart in MT5
+    - Indicator buffer indices are hardcoded to match custom MQL5 files
+  version: 1.0.0
+  contact:
+    name: MT5 Service Support
+    email: support@tradingalerts.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:5001
+    description: Local development server
+  - url: http://mt5-service:5001
+    description: Docker container (internal network)
+  - url: https://mt5.tradingalerts.com
+    description: Production server
+
+tags:
+  - name: Health
+    description: Service health monitoring
+  - name: Indicators
+    description: MT5 indicator data endpoints
+
+paths:
+  /api/health:
+    get:
+      tags:
+        - Health
+      summary: Health check endpoint
+      description: |
+        Returns the health status of the Flask MT5 service.
+        
+        Checks:
+        - Flask application status
+        - MT5 terminal connection
+        - Indicator availability
+        
+        This endpoint does NOT require authentication and can be used for:
+        - Docker health checks
+        - Load balancer health probes
+        - Monitoring systems
+      operationId: healthCheck
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - status
+                  - mt5_connected
+                  - timestamp
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - ok
+                      - degraded
+                    description: Overall service status
+                    example: ok
+                  mt5_connected:
+                    type: boolean
+                    description: Whether MT5 terminal is connected and accessible
+                    example: true
+                  timestamp:
+                    type: string
+                    format: date-time
+                    description: Current server timestamp (ISO 8601)
+                    example: '2025-10-24T10:00:00Z'
+                  mt5_terminal_info:
+                    type: object
+                    description: Additional MT5 terminal information (optional)
+                    properties:
+                      company:
+                        type: string
+                        example: MetaQuotes Software Corp.
+                      name:
+                        type: string
+                        example: MetaTrader 5
+                      version:
+                        type: integer
+                        example: 3770
+              examples:
+                healthy:
+                  summary: Service healthy with MT5 connected
+                  value:
+                    status: ok
+                    mt5_connected: true
+                    timestamp: '2025-10-24T10:00:00Z'
+                    mt5_terminal_info:
+                      company: MetaQuotes Software Corp.
+                      name: MetaTrader 5
+                      version: 3770
+                
+                degraded:
+                  summary: Service running but MT5 disconnected
+                  value:
+                    status: degraded
+                    mt5_connected: false
+                    timestamp: '2025-10-24T10:00:00Z'
+        
+        '503':
+          description: Service unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                mt5_not_running:
+                  summary: MT5 terminal not running
+                  value:
+                    success: false
+                    error: Service Unavailable
+                    message: MT5 terminal is not running or not accessible
+
+  /api/indicators/{symbol}/{timeframe}:
+    get:
+      tags:
+        - Indicators
+      summary: Get indicator data
+      description: |
+        Fetches indicator data from MT5 for a specific symbol and timeframe.
+        
+        **Data Sources:**
+        - OHLC candlestick data from MT5
+        - Horizontal lines from Fractal Horizontal Line_V5.mq5
+        - Diagonal lines from Fractal Diagonal Line_V4.mq5
+        - Fractal markers (peaks and bottoms)
+        
+        **Buffer Mapping:**
+        
+        Fractal Horizontal Line_V5.mq5:
+        - Buffer 0: Peak fractals (108)
+        - Buffer 1: Bottom fractals (108)
+        - Buffer 2: Peak fractals (119)
+        - Buffer 3: Bottom fractals (119)
+        - Buffer 4: Peak Line #1 (strongest resistance)
+        - Buffer 5: Peak Line #2
+        - Buffer 6: Peak Line #3
+        - Buffer 7: Bottom Line #1 (strongest support)
+        - Buffer 8: Bottom Line #2
+        - Buffer 9: Bottom Line #3
+        
+        Fractal Diagonal Line_V4.mq5:
+        - Buffer 0: Ascending Line #1 (strongest uptrend)
+        - Buffer 1: Ascending Line #2
+        - Buffer 2: Ascending Line #3
+        - Buffer 3: Descending Line #1 (strongest downtrend)
+        - Buffer 4: Descending Line #2
+        - Buffer 5: Descending Line #3
+        
+        **Requirements:**
+        - MT5 terminal must be running
+        - Symbol must exist in Market Watch
+        - Both custom indicators must be attached to the chart
+        - Valid API key in X-API-Key header
+      operationId: getIndicatorData
+      security:
+        - apiKey: []
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          description: |
+            Trading symbol name as it appears in MT5.
+            
+            Common Deriv synthetic indices:
+            - Boom 300 Index
+            - Boom 500 Index
+            - Boom 1000 Index
+            - Crash 300 Index
+            - Crash 500 Index
+            - Crash 1000 Index
+            - Volatility 10 Index
+            - Volatility 25 Index
+            - Volatility 50 Index
+            - Volatility 75 Index
+            - Volatility 100 Index
+            
+            Forex pairs (examples):
+            - EURUSD
+            - GBPUSD
+            - USDJPY
+          schema:
+            type: string
+          example: Boom 300 Index
+        
+        - name: timeframe
+          in: path
+          required: true
+          description: Chart timeframe for indicator calculation
+          schema:
+            type: string
+            enum:
+              - M1
+              - M5
+              - M15
+              - M30
+              - H1
+              - H4
+              - D1
+          example: M1
+        
+        - name: bars
+          in: query
+          required: false
+          description: |
+            Number of candlesticks to return.
+            
+            Performance notes:
+            - 100-500 bars: Very fast response
+            - 500-1000 bars: Normal response time
+            - 1000-3000 bars: Slower response
+            - 3000-5000 bars: Maximum, slowest response
+            
+            Recommendation: Use 1000 bars for most use cases.
+          schema:
+            type: integer
+            minimum: 100
+            maximum: 5000
+            default: 1000
+          example: 1000
+      
+      responses:
+        '200':
+          description: Indicator data retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                required:
+                  - success
+                  - data
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  data:
+                    type: object
+                    required:
+                      - ohlc
+                      - horizontal
+                      - diagonal
+                      - fractals
+                    properties:
+                      ohlc:
+                        type: array
+                        description: OHLC candlestick data
+                        items:
+                          $ref: '#/components/schemas/OHLCCandle'
+                      horizontal:
+                        $ref: '#/components/schemas/HorizontalLines'
+                      diagonal:
+                        $ref: '#/components/schemas/DiagonalLines'
+                      fractals:
+                        $ref: '#/components/schemas/FractalMarkers'
+              examples:
+                boom_300_m1:
+                  summary: Boom 300 Index M1 with 1000 bars
+                  value:
+                    success: true
+                    data:
+                      ohlc:
+                        - time: 1729764000
+                          open: 12500.50
+                          high: 12550.75
+                          low: 12480.25
+                          close: 12520.00
+                          volume: 1500
+                        - time: 1729764060
+                          open: 12520.00
+                          high: 12545.00
+                          low: 12510.00
+                          close: 12535.50
+                          volume: 1200
+                      horizontal:
+                        peak_1:
+                          - index: 0
+                            value: 12600.00
+                          - index: 5
+                            value: 12650.00
+                        peak_2:
+                          - index: 2
+                            value: 12580.00
+                        peak_3:
+                          - index: 8
+                            value: 12570.00
+                        bottom_1:
+                          - index: 3
+                            value: 12400.00
+                        bottom_2:
+                          - index: 6
+                            value: 12420.00
+                        bottom_3:
+                          - index: 10
+                            value: 12450.00
+                      diagonal:
+                        ascending_1:
+                          - index: 0
+                            value: 12350.00
+                          - index: 10
+                            value: 12450.00
+                        ascending_2:
+                          - index: 5
+                            value: 12380.00
+                        ascending_3: []
+                        descending_1:
+                          - index: 0
+                            value: 12650.00
+                          - index: 8
+                            value: 12550.00
+                        descending_2: []
+                        descending_3: []
+                      fractals:
+                        peaks:
+                          - time: 1729764000
+                            price: 12600.00
+                          - time: 1729764300
+                            price: 12650.00
+                        bottoms:
+                          - time: 1729764180
+                            price: 12400.00
+                          - time: 1729764420
+                            price: 12380.00
+                
+                minimal_data:
+                  summary: Minimal response with few indicators
+                  value:
+                    success: true
+                    data:
+                      ohlc:
+                        - time: 1729764000
+                          open: 1.0850
+                          high: 1.0865
+                          low: 1.0840
+                          close: 1.0855
+                          volume: 850
+                      horizontal:
+                        peak_1: []
+                        peak_2: []
+                        peak_3: []
+                        bottom_1:
+                          - index: 0
+                            value: 1.0840
+                        bottom_2: []
+                        bottom_3: []
+                      diagonal:
+                        ascending_1: []
+                        ascending_2: []
+                        ascending_3: []
+                        descending_1: []
+                        descending_2: []
+                        descending_3: []
+                      fractals:
+                        peaks: []
+                        bottoms:
+                          - time: 1729764000
+                            price: 1.0840
+        
+        '400':
+          description: Bad request - invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_timeframe:
+                  summary: Invalid timeframe parameter
+                  value:
+                    success: false
+                    error: Bad Request
+                    message: Invalid timeframe 'M2'. Must be one of M1, M5, M15, M30, H1, H4, D1
+                
+                invalid_bars:
+                  summary: Bars parameter out of range
+                  value:
+                    success: false
+                    error: Bad Request
+                    message: Parameter 'bars' must be between 100 and 5000
+        
+        '401':
+          description: Unauthorized - missing or invalid API key
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missing_api_key:
+                  summary: API key not provided
+                  value:
+                    success: false
+                    error: Unauthorized
+                    message: Missing or invalid API key
+                
+                invalid_api_key:
+                  summary: Invalid API key provided
+                  value:
+                    success: false
+                    error: Unauthorized
+                    message: Invalid API key
+        
+        '404':
+          description: Not found - symbol does not exist in MT5
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                symbol_not_found:
+                  summary: Symbol not found in MT5
+                  value:
+                    success: false
+                    error: Not Found
+                    message: Symbol 'INVALID' not found in MT5. Please ensure the symbol exists in Market Watch.
+                
+                indicator_not_found:
+                  summary: Custom indicator not attached
+                  value:
+                    success: false
+                    error: Not Found
+                    message: Custom indicator 'Fractal Horizontal Line_V5' not found. Please attach indicators to chart.
+        
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                mt5_connection_failed:
+                  summary: Failed to connect to MT5
+                  value:
+                    success: false
+                    error: Internal Server Error
+                    message: Failed to connect to MT5 terminal. Please check if MT5 is running and logged in.
+                
+                buffer_read_failed:
+                  summary: Failed to read indicator buffers
+                  value:
+                    success: false
+                    error: Internal Server Error
+                    message: Failed to read indicator buffer. The indicator may not be properly initialized.
+                
+                ohlc_fetch_failed:
+                  summary: Failed to fetch OHLC data
+                  value:
+                    success: false
+                    error: Internal Server Error
+                    message: Failed to get OHLC data for Boom 300 Index M1. The symbol may not have sufficient history.
+        
+        '503':
+          description: Service unavailable - MT5 terminal not running
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                mt5_not_running:
+                  summary: MT5 terminal not running
+                  value:
+                    success: false
+                    error: Service Unavailable
+                    message: MT5 terminal is not running or not accessible. Please start MT5 terminal.
+                
+                mt5_not_logged_in:
+                  summary: MT5 terminal not logged in
+                  value:
+                    success: false
+                    error: Service Unavailable
+                    message: MT5 terminal is not logged in. Please login to your MT5 account.
+
+components:
+  securitySchemes:
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+      description: |
+        API key for authenticating requests to the Flask MT5 service.
+        
+        This key should be:
+        - Stored securely in environment variables
+        - Never exposed to clients
+        - Only used for server-to-server communication
+        - Rotated periodically for security
+        
+        The Next.js backend uses this key to authenticate requests to the Flask service.
+        
+        Example header:
+        ```
+        X-API-Key: your-secret-api-key-here
+        ```
+
+  schemas:
+    OHLCCandle:
+      type: object
+      description: Single OHLC candlestick with volume
+      required:
+        - time
+        - open
+        - high
+        - low
+        - close
+        - volume
+      properties:
+        time:
+          type: integer
+          format: int64
+          description: Unix timestamp in seconds
+          example: 1729764000
+        open:
+          type: number
+          format: double
+          description: Opening price
+          example: 12500.50
+        high:
+          type: number
+          format: double
+          description: Highest price in period
+          example: 12550.75
+        low:
+          type: number
+          format: double
+          description: Lowest price in period
+          example: 12480.25
+        close:
+          type: number
+          format: double
+          description: Closing price
+          example: 12520.00
+        volume:
+          type: integer
+          format: int64
+          description: Trading volume (tick volume for Deriv indices)
+          example: 1500
+
+    HorizontalLines:
+      type: object
+      description: |
+        Horizontal support and resistance lines from Fractal Horizontal Line_V5.mq5
+        
+        Line strength (strongest to weakest):
+        - peak_1 / bottom_1: Strongest resistance/support
+        - peak_2 / bottom_2: Medium strength
+        - peak_3 / bottom_3: Weakest (most recent)
+      required:
+        - peak_1
+        - peak_2
+        - peak_3
+        - bottom_1
+        - bottom_2
+        - bottom_3
+      properties:
+        peak_1:
+          type: array
+          description: Strongest resistance line (Peak Line #1 from buffer 4)
+          items:
+            $ref: '#/components/schemas/LinePoint'
+        peak_2:
+          type: array
+          description: Medium resistance line (Peak Line #2 from buffer 5)
+          items:
+            $ref: '#/components/schemas/LinePoint'
+        peak_3:
+          type: array
+          description: Weakest resistance line (Peak Line #3 from buffer 6)
+          items:
+            $ref: '#/components/schemas/LinePoint'
+        bottom_1:
+          type: array
+          description: Strongest support line (Bottom Line #1 from buffer 7)
+          items:
+            $ref: '#/components/schemas/LinePoint'
+        bottom_2:
+          type: array
+          description: Medium support line (Bottom Line #2 from buffer 8)
+          items:
+            $ref: '#/components/schemas/LinePoint'
+        bottom_3:
+          type: array
+          description: Weakest support line (Bottom Line #3 from buffer 9)
+          items:
+            $ref: '#/components/schemas/LinePoint'
+
+    DiagonalLines:
+      type: object
+      description: |
+        Diagonal trendlines from Fractal Diagonal Line_V4.mq5
+        
+        Line strength (strongest to weakest):
+        - ascending_1 / descending_1: Strongest trends
+        - ascending_2 / descending_2: Medium strength
+        - ascending_3 / descending_3: Weakest (most recent)
+      required:
+        - ascending_1
+        - ascending_2
+        - ascending_3
+        - descending_1
+        - descending_2
+        - descending_3
+      properties:
+        ascending_1:
+          type: array
+          description: Strongest uptrend line (Ascending Line #1 from buffer 0)
+          items:
+            $ref: '#/components/schemas/LinePoint'
+        ascending_2:
+          type: array
+          description: Medium uptrend line (Ascending Line #2 from buffer 1)
+          items:
+            $ref: '#/components/schemas/LinePoint'
+        ascending_3:
+          type: array
+          description: Weakest uptrend line (Ascending Line #3 from buffer 2)
+          items:
+            $ref: '#/components/schemas/LinePoint'
+        descending_1:
+          type: array
+          description: Strongest downtrend line (Descending Line #1 from buffer 3)
+          items:
+            $ref: '#/components/schemas/LinePoint'
+        descending_2:
+          type: array
+          description: Medium downtrend line (Descending Line #2 from buffer 4)
+          items:
+            $ref: '#/components/schemas/LinePoint'
+        descending_3:
+          type: array
+          description: Weakest downtrend line (Descending Line #3 from buffer 5)
+          items:
+            $ref: '#/components/schemas/LinePoint'
+
+    LinePoint:
+      type: object
+      description: Single point on a support/resistance or trend line
+      required:
+        - index
+        - value
+      properties:
+        index:
+          type: integer
+          description: |
+            Bar index (0 = current bar, 1 = previous bar, etc.)
+            Higher index = older bar
+          example: 50
+          minimum: 0
+        value:
+          type: number
+          format: double
+          description: Price value at this bar index
+          example: 12500.50
+
+    FractalMarkers:
+      type: object
+      description: Fractal peak and bottom marker points
+      required:
+        - peaks
+        - bottoms
+      properties:
+        peaks:
+          type: array
+          description: Peak fractal points (local highs) from buffer 0
+          items:
+            $ref: '#/components/schemas/FractalPoint'
+        bottoms:
+          type: array
+          description: Bottom fractal points (local lows) from buffer 1
+          items:
+            $ref: '#/components/schemas/FractalPoint'
+
+    FractalPoint:
+      type: object
+      description: Single fractal marker point
+      required:
+        - time
+        - price
+      properties:
+        time:
+          type: integer
+          format: int64
+          description: Unix timestamp when fractal formed
+          example: 1729764000
+        price:
+          type: number
+          format: double
+          description: Price level of the fractal
+          example: 12600.00
+
+    ErrorResponse:
+      type: object
+      description: Standard error response format
+      required:
+        - success
+        - error
+        - message
+      properties:
+        success:
+          type: boolean
+          description: Always false for error responses
+          example: false
+        error:
+          type: string
+          description: Error type/category
+          enum:
+            - Bad Request
+            - Unauthorized
+            - Not Found
+            - Internal Server Error
+            - Service Unavailable
+          example: Internal Server Error
+        message:
+          type: string
+          description: Human-readable error message with details
+          example: Failed to connect to MT5 terminal
+        code:
+          type: string
+          description: Machine-readable error code (optional)
+          example: MT5_CONNECTION_FAILED
+        details:
+          type: object
+          description: Additional error context (optional)
+
+security:
+  - apiKey: []
