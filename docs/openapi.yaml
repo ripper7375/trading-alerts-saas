@@ -1,0 +1,1906 @@
+openapi: 3.0.3
+
+info:
+  title: Trading Alerts SaaS API
+  description: Complete API specification for the Trading Alerts SaaS platform. This API provides endpoints for user authentication, trading indicator data from MT5, alert management, watchlist management, user preferences, admin dashboard, and subscription billing.
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@tradingalerts.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+
+servers:
+  - url: http://localhost:3000
+    description: Local development server
+  - url: https://api.tradingalerts.com
+    description: Production server
+  - url: https://staging-api.tradingalerts.com
+    description: Staging server
+
+tags:
+  - name: Authentication
+    description: User authentication and registration endpoints
+  - name: User Management
+    description: User profile and preferences management
+  - name: Indicators
+    description: Trading indicator data from MT5
+  - name: Alerts
+    description: Trading alert management
+  - name: Watchlist
+    description: Symbol watchlist management
+  - name: Notifications
+    description: System and alert notifications
+  - name: Subscription
+    description: Subscription and billing management
+  - name: Admin
+    description: Admin dashboard and management
+  - name: System
+    description: System health and monitoring
+
+paths:
+  /api/auth/register:
+    post:
+      tags:
+        - Authentication
+      summary: Register a new user
+      description: Creates a new user account with email verification
+      operationId: registerUser
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - email
+                - password
+                - acceptTerms
+              properties:
+                name:
+                  type: string
+                  minLength: 2
+                  example: John Doe
+                email:
+                  type: string
+                  format: email
+                  example: john@example.com
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+                  example: SecurePass123
+                acceptTerms:
+                  type: boolean
+                  example: true
+      responses:
+        '201':
+          description: User registered successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Registration successful. Please check your email.
+                  user:
+                    type: object
+                    properties:
+                      id:
+                        type: string
+                        example: clxxx123456789
+                      name:
+                        type: string
+                        example: John Doe
+                      email:
+                        type: string
+                        example: john@example.com
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Login user
+      description: Authenticates user with email and password
+      operationId: loginUser
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: john@example.com
+                password:
+                  type: string
+                  format: password
+                  example: SecurePass123
+                rememberMe:
+                  type: boolean
+                  example: false
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  user:
+                    $ref: '#/components/schemas/UserProfile'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/auth/logout:
+    post:
+      tags:
+        - Authentication
+      summary: Logout user
+      description: Logs out the current user
+      operationId: logoutUser
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Logged out successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/auth/verify-email:
+    get:
+      tags:
+        - Authentication
+      summary: Verify email address
+      description: Verifies user email address using token
+      operationId: verifyEmail
+      security: []
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Email verification token
+      responses:
+        '200':
+          description: Email verified successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Email verified successfully
+        '400':
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/auth/forgot-password:
+    post:
+      tags:
+        - Authentication
+      summary: Request password reset
+      description: Sends password reset email
+      operationId: forgotPassword
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+                  example: john@example.com
+      responses:
+        '200':
+          description: Reset email sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+
+  /api/auth/reset-password:
+    post:
+      tags:
+        - Authentication
+      summary: Reset password
+      description: Reset user password using token
+      operationId: resetPassword
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - token
+                - password
+              properties:
+                token:
+                  type: string
+                password:
+                  type: string
+                  format: password
+                  minLength: 8
+      responses:
+        '200':
+          description: Password reset successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /api/auth/session:
+    get:
+      tags:
+        - Authentication
+      summary: Get current session
+      description: Returns current authenticated user session
+      operationId: getSession
+      responses:
+        '200':
+          description: Current session
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:
+                    $ref: '#/components/schemas/UserProfile'
+                  expires:
+                    type: string
+                    format: date-time
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/user/profile:
+    get:
+      tags:
+        - User Management
+      summary: Get user profile
+      description: Returns authenticated user profile
+      operationId: getUserProfile
+      responses:
+        '200':
+          description: User profile
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserProfile'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    put:
+      tags:
+        - User Management
+      summary: Update user profile
+      description: Updates user profile information
+      operationId: updateUserProfile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                bio:
+                  type: string
+                location:
+                  type: string
+                website:
+                  type: string
+                  format: uri
+                image:
+                  type: string
+                  format: uri
+      responses:
+        '200':
+          description: Profile updated successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  user:
+                    $ref: '#/components/schemas/UserProfile'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/user/preferences:
+    get:
+      tags:
+        - User Management
+      summary: Get user preferences
+      description: Returns all user preferences
+      operationId: getUserPreferences
+      responses:
+        '200':
+          description: User preferences
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  preferences:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UserPreference'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    put:
+      tags:
+        - User Management
+      summary: Update user preferences
+      description: Updates user preferences
+      operationId: updateUserPreferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - category
+                - key
+                - value
+              properties:
+                category:
+                  type: string
+                  enum:
+                    - chart
+                    - alerts
+                    - notifications
+                    - appearance
+                    - language
+                key:
+                  type: string
+                value:
+                  type: object
+      responses:
+        '200':
+          description: Preferences updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/user/account/deletion-request:
+    post:
+      tags:
+        - User Management
+      summary: Request account deletion
+      description: |
+        Initiates the account deletion process by sending a confirmation email.
+        User must click the confirmation link in the email to complete deletion.
+        This prevents accidental deletions and proves account ownership.
+      operationId: requestAccountDeletion
+      responses:
+        '200':
+          description: Deletion confirmation email sent
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: A confirmation email has been sent. Please check your inbox.
+                  expiresIn:
+                    type: string
+                    example: 24 hours
+                    description: How long the confirmation link remains valid
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          description: Too many deletion requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Too many deletion requests. Please try again later.
+
+  /api/user/account/deletion-confirm:
+    get:
+      tags:
+        - User Management
+      summary: Confirm account deletion
+      description: |
+        Completes the account deletion process using the token from the confirmation email.
+        This permanently deletes the user account and all associated data.
+        Warning: This action cannot be undone.
+      operationId: confirmAccountDeletion
+      security: []
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Deletion confirmation token from email
+          example: del_a1b2c3d4e5f6g7h8i9j0
+      responses:
+        '200':
+          description: Account deleted successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Your account has been permanently deleted.
+        '400':
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: Invalid or expired deletion token
+        '404':
+          description: Token not found or already used
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/user/account/deletion-cancel:
+    post:
+      tags:
+        - User Management
+      summary: Cancel account deletion
+      description: |
+        Cancels a pending account deletion request.
+        Can only be used before clicking the confirmation link.
+      operationId: cancelAccountDeletion
+      responses:
+        '200':
+          description: Deletion request cancelled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  message:
+                    type: string
+                    example: Account deletion request has been cancelled.
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          description: No pending deletion request found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/indicators:
+    get:
+      tags:
+        - Indicators
+      summary: List available indicators
+      description: Returns list of available indicators and supported symbols
+      operationId: listIndicators
+      responses:
+        '200':
+          description: List of available indicators
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  indicators:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        name:
+                          type: string
+                        type:
+                          type: string
+                        description:
+                          type: string
+                  symbols:
+                    type: array
+                    items:
+                      type: string
+                  timeframes:
+                    type: array
+                    items:
+                      type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/indicators/{symbol}/{timeframe}:
+    get:
+      tags:
+        - Indicators
+      summary: Get indicator data
+      description: Fetches indicator data from Flask MT5 microservice
+      operationId: getIndicatorData
+      parameters:
+        - name: symbol
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Trading symbol
+        - name: timeframe
+          in: path
+          required: true
+          schema:
+            type: string
+            enum:
+              - M1
+              - M5
+              - M15
+              - M30
+              - H1
+              - H4
+              - D1
+          description: Chart timeframe
+        - name: bars
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 100
+            maximum: 5000
+            default: 1000
+          description: Number of candles to fetch
+      responses:
+        '200':
+          description: Indicator data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IndicatorData'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/alerts:
+    get:
+      tags:
+        - Alerts
+      summary: List user alerts
+      description: Returns all alerts for authenticated user
+      operationId: listAlerts
+      parameters:
+        - name: active
+          in: query
+          required: false
+          schema:
+            type: boolean
+        - name: symbol
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: sortBy
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - createdAt
+              - lastTriggered
+            default: createdAt
+        - name: order
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - asc
+              - desc
+            default: desc
+      responses:
+        '200':
+          description: List of alerts
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  alerts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Alert'
+                  total:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags:
+        - Alerts
+      summary: Create new alert
+      description: Creates a new trading alert
+      operationId: createAlert
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - symbol
+                - timeframe
+                - alertType
+                - condition
+              properties:
+                name:
+                  type: string
+                symbol:
+                  type: string
+                timeframe:
+                  type: string
+                  enum:
+                    - M1
+                    - M5
+                    - M15
+                    - M30
+                    - H1
+                    - H4
+                    - D1
+                alertType:
+                  type: string
+                  enum:
+                    - PRICE_TOUCH_LINE
+                    - PRICE_CROSS_LINE
+                    - FRACTAL_NEW
+                    - LINE_BREAK
+                    - INDICATOR_VALUE
+                    - CUSTOM
+                condition:
+                  type: object
+      responses:
+        '201':
+          description: Alert created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  alert:
+                    $ref: '#/components/schemas/Alert'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Alert limit reached
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/alerts/{id}:
+    get:
+      tags:
+        - Alerts
+      summary: Get alert details
+      description: Returns detailed information about alert
+      operationId: getAlert
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Alert details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Alert'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      tags:
+        - Alerts
+      summary: Update alert
+      description: Updates an existing alert
+      operationId: updateAlert
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                isActive:
+                  type: boolean
+                condition:
+                  type: object
+      responses:
+        '200':
+          description: Alert updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  alert:
+                    $ref: '#/components/schemas/Alert'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Alerts
+      summary: Delete alert
+      description: Deletes an alert permanently
+      operationId: deleteAlert
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Alert deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/watchlist:
+    get:
+      tags:
+        - Watchlist
+      summary: Get user watchlists
+      description: Returns all watchlists for authenticated user
+      operationId: listWatchlists
+      responses:
+        '200':
+          description: List of watchlists
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  watchlists:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Watchlist'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      tags:
+        - Watchlist
+      summary: Create watchlist
+      description: Creates a new watchlist
+      operationId: createWatchlist
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - symbols
+              properties:
+                name:
+                  type: string
+                symbols:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '201':
+          description: Watchlist created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  watchlist:
+                    $ref: '#/components/schemas/Watchlist'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Watchlist limit reached
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/watchlist/{id}:
+    put:
+      tags:
+        - Watchlist
+      summary: Update watchlist
+      description: Updates watchlist name or symbols
+      operationId: updateWatchlist
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                symbols:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '200':
+          description: Watchlist updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+                  watchlist:
+                    $ref: '#/components/schemas/Watchlist'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      tags:
+        - Watchlist
+      summary: Delete watchlist
+      description: Deletes a watchlist
+      operationId: deleteWatchlist
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Watchlist deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/notifications:
+    get:
+      tags:
+        - Notifications
+      summary: Get user notifications
+      description: Returns notifications for authenticated user
+      operationId: getNotifications
+      parameters:
+        - name: unread
+          in: query
+          required: false
+          schema:
+            type: boolean
+        - name: type
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - ALERT
+              - SYSTEM
+              - BILLING
+              - SECURITY
+              - FEATURE
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+      responses:
+        '200':
+          description: List of notifications
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  notifications:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Notification'
+                  unreadCount:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/notifications/{id}/read:
+    put:
+      tags:
+        - Notifications
+      summary: Mark notification as read
+      description: Marks notification as read
+      operationId: markNotificationRead
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Notification marked as read
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/notifications/{id}:
+    delete:
+      tags:
+        - Notifications
+      summary: Delete notification
+      description: Deletes a notification
+      operationId: deleteNotification
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Notification deleted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                    example: true
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /api/subscription:
+    get:
+      tags:
+        - Subscription
+      summary: Get user subscription
+      description: Returns current user subscription details
+      operationId: getSubscription
+      responses:
+        '200':
+          description: Subscription details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Subscription'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/checkout:
+    post:
+      tags:
+        - Subscription
+      summary: Create checkout session
+      description: Creates Stripe checkout session
+      operationId: createCheckout
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tier
+              properties:
+                tier:
+                  type: string
+                  enum:
+                    - PRO
+                    - ENTERPRISE
+                billingCycle:
+                  type: string
+                  enum:
+                    - monthly
+                    - yearly
+                  default: monthly
+      responses:
+        '200':
+          description: Checkout session created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  url:
+                    type: string
+                    format: uri
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /api/webhooks/stripe:
+    post:
+      tags:
+        - Subscription
+      summary: Stripe webhook handler
+      description: Handles Stripe webhook events
+      operationId: stripeWebhook
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      parameters:
+        - name: stripe-signature
+          in: header
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Webhook processed
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  received:
+                    type: boolean
+        '400':
+          description: Invalid signature
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/invoices:
+    get:
+      tags:
+        - Subscription
+      summary: Get invoice history
+      description: Returns user invoice history from Stripe
+      operationId: getInvoices
+      responses:
+        '200':
+          description: List of invoices
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  invoices:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        id:
+                          type: string
+                        amount:
+                          type: integer
+                        currency:
+                          type: string
+                        status:
+                          type: string
+                        date:
+                          type: string
+                          format: date-time
+                        invoiceUrl:
+                          type: string
+                          format: uri
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/admin/users:
+    get:
+      tags:
+        - Admin
+      summary: List all users
+      description: Returns list of all users (ENTERPRISE tier only)
+      operationId: adminListUsers
+      parameters:
+        - name: search
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: tier
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - FREE
+              - PRO
+              - ENTERPRISE
+        - name: page
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 1
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+            maximum: 100
+      responses:
+        '200':
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/UserProfile'
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+                  pages:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/admin/analytics:
+    get:
+      tags:
+        - Admin
+      summary: Get system analytics
+      description: Returns system-wide analytics (ENTERPRISE tier only)
+      operationId: adminAnalytics
+      responses:
+        '200':
+          description: System analytics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalUsers:
+                    type: integer
+                  activeUsers:
+                    type: integer
+                  revenue:
+                    type: number
+                    format: float
+                  apiCalls:
+                    type: integer
+                  activeSubscriptions:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/admin/api-usage:
+    get:
+      tags:
+        - Admin
+      summary: Get API usage statistics
+      description: Returns API usage statistics (ENTERPRISE tier only)
+      operationId: adminApiUsage
+      parameters:
+        - name: startDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: endDate
+          in: query
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: endpoint
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: API usage statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  totalRequests:
+                    type: integer
+                  averageResponseTime:
+                    type: integer
+                  errorRate:
+                    type: number
+                    format: float
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/admin/error-logs:
+    get:
+      tags:
+        - Admin
+      summary: Get system error logs
+      description: Returns system error logs (ENTERPRISE tier only)
+      operationId: adminErrorLogs
+      parameters:
+        - name: level
+          in: query
+          required: false
+          schema:
+            type: string
+            enum:
+              - DEBUG
+              - INFO
+              - WARN
+              - ERROR
+              - FATAL
+        - name: source
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 100
+            maximum: 500
+      responses:
+        '200':
+          description: Error logs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  logs:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SystemLog'
+                  total:
+                    type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /api/health:
+    get:
+      tags:
+        - System
+      summary: System health check
+      description: Returns system health status
+      operationId: healthCheck
+      security: []
+      responses:
+        '200':
+          description: System healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum:
+                      - healthy
+                      - degraded
+                  timestamp:
+                    type: string
+                    format: date-time
+        '503':
+          description: System degraded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT Bearer token authentication
+
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: next-auth.session-token
+      description: Session cookie authentication
+
+  schemas:
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+        image:
+          type: string
+          format: uri
+          nullable: true
+        tier:
+          $ref: '#/components/schemas/UserTier'
+        emailVerified:
+          type: string
+          format: date-time
+          nullable: true
+        isActive:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        lastLogin:
+          type: string
+          format: date-time
+          nullable: true
+
+    UserTier:
+      type: string
+      enum:
+        - FREE
+        - PRO
+        - ENTERPRISE
+
+    UserPreference:
+      type: object
+      properties:
+        id:
+          type: string
+        category:
+          type: string
+          enum:
+            - chart
+            - alerts
+            - notifications
+            - appearance
+            - language
+        key:
+          type: string
+        value:
+          type: object
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    IndicatorData:
+      type: object
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            ohlc:
+              type: array
+              items:
+                $ref: '#/components/schemas/OHLCCandle'
+            horizontal:
+              $ref: '#/components/schemas/HorizontalLines'
+            diagonal:
+              $ref: '#/components/schemas/DiagonalLines'
+            fractals:
+              $ref: '#/components/schemas/FractalMarkers'
+        cached:
+          type: boolean
+
+    OHLCCandle:
+      type: object
+      properties:
+        time:
+          type: integer
+        open:
+          type: number
+          format: float
+        high:
+          type: number
+          format: float
+        low:
+          type: number
+          format: float
+        close:
+          type: number
+          format: float
+        volume:
+          type: integer
+
+    HorizontalLines:
+      type: object
+      properties:
+        peak_1:
+          type: array
+          items:
+            $ref: '#/components/schemas/LinePoint'
+        peak_2:
+          type: array
+          items:
+            $ref: '#/components/schemas/LinePoint'
+        peak_3:
+          type: array
+          items:
+            $ref: '#/components/schemas/LinePoint'
+        bottom_1:
+          type: array
+          items:
+            $ref: '#/components/schemas/LinePoint'
+        bottom_2:
+          type: array
+          items:
+            $ref: '#/components/schemas/LinePoint'
+        bottom_3:
+          type: array
+          items:
+            $ref: '#/components/schemas/LinePoint'
+
+    DiagonalLines:
+      type: object
+      properties:
+        ascending_1:
+          type: array
+          items:
+            $ref: '#/components/schemas/LinePoint'
+        ascending_2:
+          type: array
+          items:
+            $ref: '#/components/schemas/LinePoint'
+        ascending_3:
+          type: array
+          items:
+            $ref: '#/components/schemas/LinePoint'
+        descending_1:
+          type: array
+          items:
+            $ref: '#/components/schemas/LinePoint'
+        descending_2:
+          type: array
+          items:
+            $ref: '#/components/schemas/LinePoint'
+        descending_3:
+          type: array
+          items:
+            $ref: '#/components/schemas/LinePoint'
+
+    LinePoint:
+      type: object
+      properties:
+        index:
+          type: integer
+        value:
+          type: number
+          format: float
+
+    FractalMarkers:
+      type: object
+      properties:
+        peaks:
+          type: array
+          items:
+            $ref: '#/components/schemas/FractalPoint'
+        bottoms:
+          type: array
+          items:
+            $ref: '#/components/schemas/FractalPoint'
+
+    FractalPoint:
+      type: object
+      properties:
+        time:
+          type: integer
+        price:
+          type: number
+          format: float
+
+    Alert:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        name:
+          type: string
+          nullable: true
+        symbol:
+          type: string
+        timeframe:
+          type: string
+          enum:
+            - M1
+            - M5
+            - M15
+            - M30
+            - H1
+            - H4
+            - D1
+        alertType:
+          $ref: '#/components/schemas/AlertType'
+        condition:
+          type: object
+        isActive:
+          type: boolean
+        lastTriggered:
+          type: string
+          format: date-time
+          nullable: true
+        triggerCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    AlertType:
+      type: string
+      enum:
+        - PRICE_TOUCH_LINE
+        - PRICE_CROSS_LINE
+        - FRACTAL_NEW
+        - LINE_BREAK
+        - INDICATOR_VALUE
+        - CUSTOM
+
+    Watchlist:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        name:
+          type: string
+        symbols:
+          type: array
+          items:
+            type: string
+        order:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Notification:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        type:
+          $ref: '#/components/schemas/NotificationType'
+        title:
+          type: string
+        message:
+          type: string
+        data:
+          type: object
+          nullable: true
+        isRead:
+          type: boolean
+        readAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    NotificationType:
+      type: string
+      enum:
+        - ALERT
+        - SYSTEM
+        - BILLING
+        - SECURITY
+        - FEATURE
+
+    Subscription:
+      type: object
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        stripeCustomerId:
+          type: string
+        stripeSubscriptionId:
+          type: string
+          nullable: true
+        stripePriceId:
+          type: string
+          nullable: true
+        stripeCurrentPeriodEnd:
+          type: string
+          format: date-time
+          nullable: true
+        status:
+          $ref: '#/components/schemas/SubscriptionStatus'
+        plan:
+          $ref: '#/components/schemas/UserTier'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+        canceledAt:
+          type: string
+          format: date-time
+          nullable: true
+        cancelAtPeriodEnd:
+          type: boolean
+
+    SubscriptionStatus:
+      type: string
+      enum:
+        - ACTIVE
+        - INACTIVE
+        - CANCELED
+        - PAST_DUE
+        - UNPAID
+        - TRIALING
+
+    SystemLog:
+      type: object
+      properties:
+        id:
+          type: string
+        level:
+          $ref: '#/components/schemas/LogLevel'
+        source:
+          type: string
+        message:
+          type: string
+        metadata:
+          type: object
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+
+    LogLevel:
+      type: string
+      enum:
+        - DEBUG
+        - INFO
+        - WARN
+        - ERROR
+        - FATAL
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+        code:
+          type: string
+        details:
+          type: object
+          nullable: true
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    Forbidden:
+      description: Forbidden
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+
+security:
+  - bearerAuth: []
+  - cookieAuth: []
