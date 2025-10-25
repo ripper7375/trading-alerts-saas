@@ -1,0 +1,79 @@
+graph LR
+    subgraph Auth["🔐 Authentication (Next.js)"]
+        A1["POST /api/auth/register"]
+        A2["POST /api/auth/login"]
+        A3["POST /api/auth/logout"]
+        A4["GET /api/auth/verify-email"]
+        A5["POST /api/auth/forgot-password"]
+        A6["POST /api/auth/reset-password"]
+        A7["GET /api/auth/session"]
+    end
+    
+    subgraph User["👤 User Management (Next.js)"]
+        U1["GET /api/user/profile"]
+        U2["PUT /api/user/profile"]
+        U3["GET /api/user/preferences"]
+        U4["PUT /api/user/preferences"]
+        U5["POST /api/user/account/deletion-request"]
+        U6["GET /api/user/account/deletion-confirm"]
+    end
+    
+    subgraph Indicators["📊 Indicators (Next.js)"]
+        I1["GET /api/indicators"]
+        I2["GET /api/indicators/{symbol}/{timeframe}"]
+    end
+    
+    subgraph Alerts["🔔 Alerts (Next.js)"]
+        AL1["GET /api/alerts"]
+        AL2["POST /api/alerts"]
+        AL3["GET /api/alerts/{id}"]
+        AL4["PUT /api/alerts/{id}"]
+        AL5["DELETE /api/alerts/{id}"]
+    end
+    
+    subgraph Watchlist["⭐ Watchlist (Next.js)"]
+        W1["GET /api/watchlist"]
+        W2["POST /api/watchlist"]
+        W3["PUT /api/watchlist/{id}"]
+        W4["DELETE /api/watchlist/{id}"]
+    end
+    
+    subgraph Notifications["🔔 Notifications (Next.js)"]
+        N1["GET /api/notifications"]
+        N2["PUT /api/notifications/{id}/read"]
+        N3["DELETE /api/notifications/{id}"]
+    end
+    
+    subgraph Admin["👑 Admin (Next.js)"]
+        AD1["GET /api/admin/users"]
+        AD2["GET /api/admin/analytics"]
+        AD3["GET /api/admin/api-usage"]
+        AD4["GET /api/admin/error-logs"]
+    end
+    
+    subgraph Subscription["💳 Subscription (Next.js)"]
+        S1["GET /api/subscription"]
+        S2["POST /api/checkout"]
+        S3["POST /api/webhooks/stripe"]
+        S4["GET /api/invoices"]
+    end
+    
+    subgraph Flask["🐍 Flask MT5 Service"]
+        F1["GET /api/health"]
+        F2["GET /api/indicators/{symbol}/{timeframe}"]
+    end
+    
+    subgraph System["🔧 System (Next.js)"]
+        SY1["GET /api/health"]
+    end
+    
+    style Auth fill:#2196F3,stroke:#0D47A1,color:#fff
+    style User fill:#4CAF50,stroke:#1B5E20,color:#fff
+    style Indicators fill:#9C27B0,stroke:#4A148C,color:#fff
+    style Alerts fill:#FF9800,stroke:#E65100,color:#fff
+    style Watchlist fill:#00BCD4,stroke:#006064,color:#fff
+    style Notifications fill:#FFEB3B,stroke:#F57F17,color:#000
+    style Admin fill:#F44336,stroke:#B71C1C,color:#fff
+    style Subscription fill:#FFC107,stroke:#FF6F00,color:#000
+    style Flask fill:#607D8B,stroke:#263238,color:#fff
+    style System fill:#9E9E9E,stroke:#212121,color:#fff

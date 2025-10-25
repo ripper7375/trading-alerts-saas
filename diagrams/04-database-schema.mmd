@@ -1,0 +1,126 @@
+erDiagram
+    User ||--o{ Account : "has"
+    User ||--o{ Session : "has"
+    User ||--o{ Alert : "creates"
+    User ||--o{ Watchlist : "owns"
+    User ||--o{ UserPreference : "has"
+    User ||--o| Subscription : "has"
+    User ||--o{ Notification : "receives"
+    User ||--o{ ApiUsage : "generates"
+    Alert ||--o{ AlertNotification : "triggers"
+    
+    User {
+        string id PK "CUID"
+        string email UK "Unique"
+        string name
+        string passwordHash "Nullable"
+        datetime emailVerified "Nullable"
+        string image "Nullable"
+        enum tier "FREE/PRO/ENTERPRISE"
+        datetime createdAt
+        datetime updatedAt
+        datetime lastLogin "Nullable"
+        boolean isActive
+    }
+    
+    Account {
+        string id PK "CUID"
+        string userId FK
+        string type
+        string provider
+        string providerAccountId
+        string refresh_token "Nullable"
+        string access_token "Nullable"
+        int expires_at "Nullable"
+    }
+    
+    Session {
+        string id PK "CUID"
+        string sessionToken UK
+        string userId FK
+        datetime expires
+    }
+    
+    Alert {
+        string id PK "CUID"
+        string userId FK
+        string name "Nullable"
+        string symbol
+        string timeframe
+        enum alertType "PRICE_TOUCH_LINE, etc"
+        json condition
+        boolean isActive
+        datetime lastTriggered "Nullable"
+        int triggerCount
+        datetime createdAt
+        datetime updatedAt
+    }
+    
+    AlertNotification {
+        string id PK "CUID"
+        string alertId FK
+        datetime triggeredAt
+        float price
+        json details
+        boolean isRead
+        datetime readAt "Nullable"
+    }
+    
+    Watchlist {
+        string id PK "CUID"
+        string userId FK
+        string name
+        string[] symbols
+        int order
+        datetime createdAt
+        datetime updatedAt
+    }
+    
+    UserPreference {
+        string id PK "CUID"
+        string userId FK
+        string category
+        string key
+        json value
+        datetime createdAt
+        datetime updatedAt
+    }
+    
+    Subscription {
+        string id PK "CUID"
+        string userId FK "Unique"
+        string stripeCustomerId UK
+        string stripeSubscriptionId "Nullable, UK"
+        string stripePriceId "Nullable"
+        datetime stripeCurrentPeriodEnd "Nullable"
+        enum status "ACTIVE/INACTIVE/CANCELED"
+        enum plan "FREE/PRO/ENTERPRISE"
+        datetime createdAt
+        datetime updatedAt
+        datetime canceledAt "Nullable"
+        boolean cancelAtPeriodEnd
+    }
+    
+    Notification {
+        string id PK "CUID"
+        string userId FK
+        enum type "ALERT/SYSTEM/BILLING"
+        string title
+        string message
+        json data "Nullable"
+        boolean isRead
+        datetime readAt "Nullable"
+        datetime createdAt
+    }
+    
+    ApiUsage {
+        string id PK "CUID"
+        string userId FK "Nullable"
+        string endpoint
+        string method
+        int status
+        int duration
+        string symbol "Nullable"
+        string timeframe "Nullable"
+        datetime createdAt
+    }

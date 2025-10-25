@@ -1,0 +1,32 @@
+graph TB
+    subgraph External["External Actors & Systems"]
+        User[("👤 Trader/User<br/>(Person)")]
+        MT5["🖥️ MetaTrader 5 Terminal<br/>(External System)<br/>---<br/>Runs custom MQL5 indicators"]
+        Stripe["💳 Stripe<br/>(External System)<br/>---<br/>Payment processing"]
+        Resend["📧 Resend<br/>(External System)<br/>---<br/>Email delivery"]
+    end
+    
+    subgraph System["Trading Alerts SaaS System"]
+        NextJS["🌐 Next.js Web Application<br/>(Container)<br/>---<br/>TypeScript, React, NextAuth.js<br/>Frontend & API Backend"]
+        Flask["🐍 Flask MT5 Service<br/>(Container)<br/>---<br/>Python microservice<br/>Reads MT5 indicator data"]
+        DB[("💾 PostgreSQL<br/>(Database)<br/>---<br/>User data, alerts,<br/>subscriptions")]
+        Cache[("⚡ Redis<br/>(Cache)<br/>---<br/>Session storage,<br/>indicator cache,<br/>job queue")]
+    end
+    
+    User -->|"Uses web browser<br/>(HTTPS)"| NextJS
+    NextJS -->|"Queries indicator data<br/>(HTTP + API Key)"| Flask
+    Flask -->|"Reads indicator buffers<br/>(MT5 Python API)"| MT5
+    NextJS -->|"Reads/Writes<br/>(SQL)"| DB
+    NextJS -->|"Caches data<br/>(Redis Protocol)"| Cache
+    NextJS -->|"Processes payments<br/>(HTTPS)"| Stripe
+    NextJS -->|"Sends emails<br/>(HTTPS API)"| Resend
+    Stripe -->|"Webhooks<br/>(HTTPS)"| NextJS
+    
+    style User fill:#4CAF50,stroke:#2E7D32,color:#fff
+    style MT5 fill:#FF9800,stroke:#E65100,color:#fff
+    style Stripe fill:#6772E5,stroke:#4B5BCC,color:#fff
+    style Resend fill:#00D4FF,stroke:#0099CC,color:#fff
+    style NextJS fill:#1e88e5,stroke:#0d47a1,color:#fff
+    style Flask fill:#43a047,stroke:#2E7D32,color:#fff
+    style DB fill:#0288D1,stroke:#01579B,color:#fff
+    style Cache fill:#D32F2F,stroke:#B71C1C,color:#fff

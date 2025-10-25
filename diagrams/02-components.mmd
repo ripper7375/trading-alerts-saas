@@ -1,0 +1,68 @@
+graph TB
+    subgraph Browser["🌐 Browser / Client"]
+        Dashboard["📊 Dashboard Page"]
+        Charts["📈 Charts Page"]
+        Alerts["🔔 Alerts Page"]
+        Settings["⚙️ Settings Page"]
+        Admin["👑 Admin Page"]
+    end
+    
+    subgraph NextJS["Next.js Application Container"]
+        subgraph Frontend["Frontend Layer (React Components)"]
+            TradingChart["TradingView Charts<br/>(lightweight-charts)"]
+            Forms["React Hook Forms<br/>(Zod validation)"]
+            StateManagement["State Management<br/>(Zustand + React Query)"]
+        end
+        
+        subgraph APILayer["API Layer (Next.js Routes)"]
+            AuthAPI["/api/auth/*<br/>Authentication routes"]
+            UserAPI["/api/user/*<br/>User management"]
+            IndicatorAPI["/api/indicators/*<br/>Indicator data"]
+            AlertAPI["/api/alerts/*<br/>Alert management"]
+            AdminAPI["/api/admin/*<br/>Admin operations"]
+            SubAPI["/api/subscription/*<br/>Billing & subscription"]
+        end
+        
+        subgraph Auth["Authentication Layer"]
+            NextAuth["NextAuth.js<br/>(Session provider)"]
+            JWT["JWT Tokens"]
+            SessionMgmt["Session Management"]
+        end
+        
+        subgraph Services["Business Logic"]
+            MT5Client["MT5 Client<br/>(Flask API caller)"]
+            AlertChecker["Alert Checker<br/>(Background jobs)"]
+            EmailService["Email Service<br/>(Resend)"]
+        end
+    end
+    
+    subgraph Flask["Flask MT5 Service Container"]
+        FlaskAPI["REST API<br/>(Flask routes)"]
+        MT5Connection["MT5 Connection<br/>(MetaTrader5 lib)"]
+        BufferReader["Indicator Buffer Reader<br/>(Reads MQL5 buffers)"]
+    end
+    
+    subgraph DataLayer["Data Layer"]
+        Prisma["Prisma ORM<br/>(TypeScript)"]
+        PostgresDB[("PostgreSQL<br/>Database")]
+        RedisCache[("Redis<br/>Cache & Queue")]
+    end
+    
+    Browser --> Frontend
+    Frontend --> APILayer
+    APILayer --> Auth
+    APILayer --> Services
+    Auth --> NextAuth
+    Services --> MT5Client
+    Services --> EmailService
+    MT5Client --> FlaskAPI
+    FlaskAPI --> MT5Connection
+    MT5Connection --> BufferReader
+    APILayer --> Prisma
+    Prisma --> PostgresDB
+    Services --> RedisCache
+    
+    style Browser fill:#E3F2FD,stroke:#1976D2
+    style NextJS fill:#F3E5F5,stroke:#7B1FA2
+    style Flask fill:#E8F5E9,stroke:#388E3C
+    style DataLayer fill:#FFF3E0,stroke:#F57C00

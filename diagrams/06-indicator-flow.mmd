@@ -1,0 +1,79 @@
+sequenceDiagram
+    actor User
+    participant Browser
+    participant NextAPI as Next.js API
+    participant Redis as Redis Cache
+    participant Flask as Flask MT5 Service
+    participant MT5 as MT5 Terminal
+    participant Charts as TradingView Charts
+    
+    User->>Browser: Open chart page<br/>/charts/Boom-300-Index/M1
+    Browser->>NextAPI: GET /api/indicators/Boom-300-Index/M1?bars=1000<br/>Authorization: Bearer <token>
+    
+    NextAPI->>NextAPI: Authenticate user
+    NextAPI->>NextAPI: Check rate limit
+    
+    NextAPI->>Redis: GET indicators:Boom-300-Index:M1:1000
+    
+    alt Cache Hit
+        Redis-->>NextAPI: Cached data found
+        NextAPI-->>Browser: 200 OK {success: true, data: {...}, cached: true}
+    else Cache Miss
+        Redis-->>NextAPI: null (cache miss)
+        
+        NextAPI->>Flask: GET /api/indicators/Boom-300-Index/M1?bars=1000<br/>X-API-Key: <secret>
+        
+        Flask->>Flask: Validate API key
+        Flask->>MT5: mt5.initialize()
+        MT5-->>Flask: Connected
+        
+        Flask->>MT5: mt5.symbol_select("Boom 300 Index", True)
+        Flask->>MT5: mt5.copy_rates_from_pos(symbol, M1, 0, 1000)
+        MT5-->>Flask: OHLC data (1000 bars)
+        
+        Flask->>MT5: mt5.iCustom(symbol, M1, "Fractal Horizontal Line_V5")
+        MT5-->>Flask: Indicator handle
+        
+        Flask->>MT5: mt5.copy_buffer(handle, 4, 0, 1000)<br/>(Peak Line #1)
+        MT5-->>Flask: Buffer data
+        
+        Flask->>MT5: mt5.copy_buffer(handle, 5, 0, 1000)<br/>(Peak Line #2)
+        MT5-->>Flask: Buffer data
+        
+        Flask->>MT5: mt5.copy_buffer(handle, 7, 0, 1000)<br/>(Bottom Line #1)
+        MT5-->>Flask: Buffer data
+        
+        Flask->>MT5: mt5.iCustom(symbol, M1, "Fractal Diagonal Line_V4")
+        MT5-->>Flask: Indicator handle
+        
+        Flask->>MT5: mt5.copy_buffer(handle, 0-5, 0, 1000)<br/>(All 6 diagonal lines)
+        MT5-->>Flask: Buffer data
+        
+        Flask->>Flask: Format data as JSON<br/>{ohlc, horizontal, diagonal, fractals}
+        Flask-->>NextAPI: 200 OK {success: true, data: {...}}
+        
+        NextAPI->>Redis: SETEX indicators:...:1000 300 <data>
+        Redis-->>NextAPI: Cached (5 min TTL)
+        
+        NextAPI->>NextAPI: Log API usage
+        NextAPI-->>Browser: 200 OK {success: true, data: {...}, cached: false}
+    end
+    
+    Browser->>Charts: Initialize TradingView Lightweight Charts
+    Browser->>Charts: createChart(container, options)
+    Browser->>Charts: addCandlestickSeries()
+    Browser->>Charts: candleSeries.setData(data.ohlc)
+    
+    loop For each horizontal line
+        Browser->>Charts: addLineSeries({color, lineWidth})
+        Browser->>Charts: lineSeries.setData(data.horizontal.peak_1)
+    end
+    
+    loop For each diagonal line
+        Browser->>Charts: addLineSeries({color, lineWidth})
+        Browser->>Charts: lineSeries.setData(data.diagonal.ascending_1)
+    end
+    
+    Browser->>Charts: candleSeries.setMarkers(data.fractals)
+    
+    Charts-->>User: Display chart with indicators

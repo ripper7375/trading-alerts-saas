@@ -1,0 +1,73 @@
+gantt
+    title Trading Alerts SaaS - Implementation Timeline (10 Weeks)
+    dateFormat YYYY-MM-DD
+    
+    section Phase 1: Foundation
+    Next.js project setup           :done, p1-1, 2025-11-01, 2d
+    Install dependencies            :done, p1-2, after p1-1, 1d
+    Setup Prisma & PostgreSQL       :done, p1-3, after p1-2, 2d
+    Database schema & migrations    :done, p1-4, after p1-3, 2d
+    NextAuth.js configuration       :active, p1-5, after p1-4, 3d
+    Basic layout & navigation       :p1-6, after p1-5, 2d
+    
+    section Phase 2: Flask MT5 Service
+    Flask project structure         :p2-1, 2025-11-08, 2d
+    MT5 Python library setup        :p2-2, after p2-1, 1d
+    Indicator buffer reading        :crit, p2-3, after p2-2, 3d
+    REST API endpoints              :p2-4, after p2-3, 2d
+    Docker configuration            :p2-5, after p2-4, 1d
+    API key authentication          :p2-6, after p2-5, 1d
+    Testing with MT5 terminal       :crit, p2-7, after p2-6, 2d
+    
+    section Phase 3: Frontend Components
+    shadcn/ui components setup      :p3-1, 2025-11-15, 1d
+    Dashboard page layout           :p3-2, after p3-1, 2d
+    Form components (React Hook Form):p3-3, after p3-2, 2d
+    State management (Zustand)      :p3-4, after p3-3, 2d
+    React Query setup               :p3-5, after p3-4, 1d
+    
+    section Phase 4: Chart Visualization
+    TradingView Lightweight Charts  :crit, p4-1, 2025-11-22, 2d
+    Chart component creation        :crit, p4-2, after p4-1, 3d
+    Indicator overlay rendering     :crit, p4-3, after p4-2, 3d
+    WebSocket real-time updates     :p4-4, after p4-3, 2d
+    Chart controls & timeframe      :p4-5, after p4-4, 2d
+    
+    section Phase 5: Alert System
+    Alert CRUD API routes           :p5-1, 2025-11-29, 2d
+    Alert form UI                   :p5-2, after p5-1, 2d
+    BullMQ background jobs          :crit, p5-3, after p5-2, 3d
+    Alert condition evaluation      :crit, p5-4, after p5-3, 2d
+    WebSocket notifications         :p5-5, after p5-4, 2d
+    Email notifications (Resend)    :p5-6, after p5-5, 2d
+    
+    section Phase 6: User Management
+    Profile settings page           :p6-1, 2025-12-06, 2d
+    Preferences management          :p6-2, after p6-1, 2d
+    Appearance settings (theme)     :p6-3, after p6-2, 1d
+    Account deletion flow           :p6-4, after p6-3, 2d
+    Password reset flow             :p6-5, after p6-4, 2d
+    
+    section Phase 7: Admin Dashboard
+    Admin layout & navigation       :p7-1, 2025-12-13, 2d
+    User management table           :p7-2, after p7-1, 2d
+    System analytics dashboard      :p7-3, after p7-2, 3d
+    API usage monitoring            :p7-4, after p7-3, 2d
+    Error logs viewer               :p7-5, after p7-4, 2d
+    
+    section Phase 8: E-commerce
+    Stripe integration setup        :crit, p8-1, 2025-12-20, 2d
+    Pricing plans page              :p8-2, after p8-1, 2d
+    Checkout flow                   :crit, p8-3, after p8-2, 3d
+    Webhook handler                 :crit, p8-4, after p8-3, 2d
+    Subscription management UI      :p8-5, after p8-4, 2d
+    Invoice history                 :p8-6, after p8-5, 1d
+    
+    section Phase 9: Polish & Deploy
+    Unit testing (Jest)             :p9-1, 2025-12-27, 3d
+    E2E testing (Playwright)        :p9-2, after p9-1, 2d
+    Performance optimization        :p9-3, after p9-2, 2d
+    Security audit                  :crit, p9-4, after p9-3, 2d
+    Documentation completion        :p9-5, after p9-4, 2d
+    Production deployment           :milestone, crit, p9-6, after p9-5, 1d
+    Post-launch monitoring          :p9-7, after p9-6, 2d

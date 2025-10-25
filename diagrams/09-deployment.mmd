@@ -1,0 +1,69 @@
+graph TB
+    subgraph Dev["💻 Development Environment"]
+        DevMachine["Developer Machine"]
+        DevDocker["Docker Compose<br/>- nextjs<br/>- flask<br/>- postgres<br/>- redis"]
+        DevMachine --> DevDocker
+    end
+    
+    subgraph GitHub["📦 GitHub Repository"]
+        Repo["trading-alerts-saas<br/>Main branch"]
+        Actions["GitHub Actions CI/CD"]
+        Repo --> Actions
+    end
+    
+    subgraph Production["☁️ Production Environment"]
+        subgraph Vercel["▲ Vercel (Next.js)"]
+            VercelEdge["Edge Network<br/>(Global CDN)"]
+            VercelFunctions["Serverless Functions<br/>(API Routes)<br/>Auto-scaling"]
+            VercelFrontend["Static Frontend<br/>(SSG/SSR)"]
+        end
+        
+        subgraph Railway["🚂 Railway (Backend Services)"]
+            RailwayFlask["Flask Container<br/>(Dockerized)<br/>Auto-scaling<br/>Health checks"]
+            RailwayPostgres["Managed PostgreSQL<br/>(Persistent storage)<br/>Automated backups"]
+        end
+        
+        subgraph Upstash["⚡ Upstash (Optional)"]
+            UpstashRedis["Managed Redis<br/>(Global replication)<br/>Edge caching"]
+        end
+        
+        subgraph External["🔌 External Services"]
+            Stripe["Stripe<br/>(Payments)"]
+            Resend["Resend<br/>(Email)"]
+            Sentry["Sentry<br/>(Error tracking)"]
+        end
+    end
+    
+    subgraph MT5Setup["🖥️ MT5 Terminal (Separate Server)"]
+        MT5Server["VPS / Dedicated Server<br/>- Windows Server<br/>- MT5 Terminal running 24/7<br/>- Custom indicators attached<br/>- Flask service deployed"]
+    end
+    
+    DevDocker -->|"git push"| Repo
+    
+    Actions -->|"Deploy"| Vercel
+    Actions -->|"Deploy Docker"| RailwayFlask
+    Actions -->|"Run migrations"| RailwayPostgres
+    
+    VercelFrontend --> VercelEdge
+    VercelFunctions --> RailwayFlask
+    VercelFunctions --> RailwayPostgres
+    VercelFunctions --> UpstashRedis
+    
+    RailwayFlask -->|"HTTP + API Key"| MT5Server
+    RailwayFlask --> RailwayPostgres
+    RailwayFlask --> UpstashRedis
+    
+    VercelFunctions --> Stripe
+    VercelFunctions --> Resend
+    VercelFunctions --> Sentry
+    
+    Users["🌍 Global Users"] --> VercelEdge
+    
+    style Dev fill:#E8F5E9,stroke:#388E3C
+    style GitHub fill:#FFF3E0,stroke:#F57C00
+    style Production fill:#E3F2FD,stroke:#1976D2
+    style Vercel fill:#000000,stroke:#000000,color:#fff
+    style Railway fill:#0B0D0E,stroke:#0B0D0E,color:#fff
+    style Upstash fill:#00E9A3,stroke:#00C389,color:#000
+    style External fill:#F3E5F5,stroke:#7B1FA2
+    style MT5Setup fill:#FFE0B2,stroke:#E65100

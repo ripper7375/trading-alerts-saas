@@ -1,0 +1,50 @@
+graph TB
+    subgraph Docker["Docker Compose Environment (docker-compose.yml)"]
+        subgraph Network["🌐 app-network (bridge)"]
+            subgraph NextJSContainer["🟦 nextjs (node:18-alpine)"]
+                NextApp["Next.js Application<br/>Port: 3000:3000<br/>Environment: .env<br/>Volumes: ./app:/app"]
+            end
+            
+            subgraph FlaskContainer["🟩 flask (python:3.11-slim)"]
+                FlaskApp["Flask MT5 Service<br/>Port: 5001:5001<br/>Environment: .env<br/>Volumes: ./mt5-service:/app"]
+            end
+            
+            subgraph PostgresContainer["🟨 postgres (postgres:15-alpine)"]
+                PostgresDB["PostgreSQL Database<br/>Port: 5432:5432<br/>Volume: postgres-data:/var/lib/postgresql/data<br/>Environment:<br/>- POSTGRES_USER=postgres<br/>- POSTGRES_PASSWORD=postgres<br/>- POSTGRES_DB=trading_alerts"]
+            end
+            
+            subgraph RedisContainer["🟥 redis (redis:7-alpine)"]
+                RedisCache["Redis Cache & Queue<br/>Port: 6379:6379<br/>Volume: redis-data:/data<br/>Command: redis-server --appendonly yes"]
+            end
+        end
+    end
+    
+    subgraph Volumes["📦 Docker Volumes"]
+        PostgresVol["postgres-data<br/>(persistent)"]
+        RedisVol["redis-data<br/>(persistent)"]
+    end
+    
+    subgraph Host["💻 Host Machine"]
+        MT5Local["MT5 Terminal<br/>(Running on host)<br/>localhost:5001 exposed"]
+        Browser["Web Browser<br/>localhost:3000"]
+    end
+    
+    NextApp -->|"SQL queries"| PostgresDB
+    NextApp -->|"Cache & queue"| RedisCache
+    NextApp -->|"HTTP + API Key"| FlaskApp
+    FlaskApp -->|"Redis cache"| RedisCache
+    FlaskApp -.->|"MT5 Python API<br/>(network: host)"| MT5Local
+    
+    PostgresDB -->|"Mounts"| PostgresVol
+    RedisCache -->|"Mounts"| RedisVol
+    
+    Browser -->|"HTTPS"| NextApp
+    
+    style NextJSContainer fill:#1976D2,stroke:#0D47A1,color:#fff
+    style FlaskContainer fill:#388E3C,stroke:#1B5E20,color:#fff
+    style PostgresContainer fill:#FBC02D,stroke:#F57F17,color:#000
+    style RedisContainer fill:#D32F2F,stroke:#B71C1C,color:#fff
+    style Network fill:#E8EAF6,stroke:#3F51B5
+    style Docker fill:#F3E5F5,stroke:#7B1FA2
+    style Volumes fill:#FFF3E0,stroke:#F57C00
+    style Host fill:#E0F2F1,stroke:#00695C

@@ -1,0 +1,66 @@
+sequenceDiagram
+    actor User
+    participant Browser
+    participant NextJS as Next.js API
+    participant DB as PostgreSQL
+    participant Email as Resend Email
+    
+    rect rgb(200, 220, 240)
+        Note over User,Email: REGISTRATION FLOW
+        User->>Browser: Fill registration form
+        Browser->>NextJS: POST /api/auth/register<br/>{name, email, password}
+        NextJS->>NextJS: Validate input (Zod)
+        NextJS->>DB: Check if email exists
+        DB-->>NextJS: Email available
+        NextJS->>NextJS: Hash password (bcrypt)
+        NextJS->>DB: Create User (isActive: false)
+        DB-->>NextJS: User created
+        NextJS->>NextJS: Generate verification token
+        NextJS->>DB: Store VerificationToken
+        DB-->>NextJS: Token stored
+        NextJS->>Email: Send verification email
+        Email-->>User: Email with verification link
+        NextJS-->>Browser: 201 Created
+        Browser-->>User: "Check your email"
+    end
+    
+    rect rgb(220, 240, 220)
+        Note over User,Email: EMAIL VERIFICATION
+        User->>Browser: Click verification link
+        Browser->>NextJS: GET /api/auth/verify-email?token=xyz
+        NextJS->>DB: Find token
+        DB-->>NextJS: Token found
+        NextJS->>NextJS: Check token expiry
+        NextJS->>DB: Update User (emailVerified, isActive: true)
+        NextJS->>DB: Delete token
+        NextJS->>Email: Send welcome email
+        NextJS-->>Browser: 200 OK
+        Browser-->>User: "Account verified!"
+    end
+    
+    rect rgb(240, 220, 220)
+        Note over User,Email: LOGIN FLOW
+        User->>Browser: Fill login form
+        Browser->>NextJS: POST /api/auth/login<br/>{email, password}
+        NextJS->>DB: Find user by email
+        DB-->>NextJS: User found
+        NextJS->>NextJS: Compare password hash
+        NextJS->>NextJS: Generate JWT token
+        NextJS->>DB: Create Session
+        DB-->>NextJS: Session created
+        NextJS->>DB: Update lastLogin timestamp
+        NextJS-->>Browser: 200 OK + JWT + Set-Cookie
+        Browser->>Browser: Store session cookie
+        Browser-->>User: Redirect to dashboard
+    end
+    
+    rect rgb(240, 240, 200)
+        Note over User,Email: AUTHENTICATED REQUEST
+        User->>Browser: Access protected page
+        Browser->>NextJS: GET /api/user/profile<br/>Cookie: session-token
+        NextJS->>NextJS: Verify JWT token
+        NextJS->>DB: Get user data
+        DB-->>NextJS: User data
+        NextJS-->>Browser: 200 OK + User profile
+        Browser-->>User: Display profile
+    end

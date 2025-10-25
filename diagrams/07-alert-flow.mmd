@@ -1,0 +1,68 @@
+sequenceDiagram
+    actor User
+    participant Browser
+    participant NextAPI as Next.js API
+    participant DB as PostgreSQL
+    participant Queue as BullMQ (Redis)
+    participant Job as Background Job
+    participant WS as WebSocket
+    participant Email as Resend Email
+    
+    rect rgb(200, 220, 240)
+        Note over User,Email: ALERT CREATION
+        User->>Browser: Create alert form<br/>"Notify when price crosses bottom_1"
+        Browser->>NextAPI: POST /api/alerts<br/>{symbol, timeframe, alertType, condition}
+        NextAPI->>NextAPI: Authenticate user
+        NextAPI->>NextAPI: Validate alert (Zod)
+        NextAPI->>NextAPI: Check tier limits<br/>(FREE: 5/day, PRO: 50/day)
+        NextAPI->>DB: INSERT Alert
+        DB-->>NextAPI: Alert created
+        NextAPI-->>Browser: 201 Created {alert}
+        Browser-->>User: "Alert created successfully"
+    end
+    
+    rect rgb(220, 240, 220)
+        Note over User,Email: BACKGROUND ALERT CHECKING
+        loop Every 1 minute
+            Queue->>Job: Trigger alert-checker job
+            Job->>DB: SELECT * FROM Alert WHERE isActive = true
+            DB-->>Job: Active alerts (e.g., 100 alerts)
+            
+            loop For each alert
+                Job->>Job: Fetch latest indicator data
+                Job->>Job: Evaluate condition<br/>if (price < bottom_1)
+                
+                alt Condition Met
+                    Job->>DB: INSERT AlertNotification<br/>{alertId, price, details}
+                    Job->>DB: UPDATE Alert SET lastTriggered, triggerCount++
+                    
+                    Job->>WS: Emit notification to user's socket
+                    WS-->>Browser: Real-time notification
+                    Browser-->>User: Toast notification
+                    
+                    Job->>Email: Send alert email<br/>"EURUSD crossed support at 1.0850"
+                    Email-->>User: Email notification
+                    
+                    Job->>DB: INSERT Notification<br/>{type: ALERT, title, message}
+                else Condition Not Met
+                    Job->>Job: Continue to next alert
+                end
+            end
+        end
+    end
+    
+    rect rgb(240, 220, 220)
+        Note over User,Email: USER VIEWS NOTIFICATIONS
+        User->>Browser: Open notifications panel
+        Browser->>NextAPI: GET /api/notifications?unread=true
+        NextAPI->>DB: SELECT * FROM Notification WHERE isRead = false
+        DB-->>NextAPI: Unread notifications
+        NextAPI-->>Browser: 200 OK {notifications}
+        Browser-->>User: Display notifications (5 unread)
+        
+        User->>Browser: Click notification
+        Browser->>NextAPI: PUT /api/notifications/{id}/read
+        NextAPI->>DB: UPDATE Notification SET isRead = true
+        NextAPI-->>Browser: 200 OK
+        Browser-->>User: Notification marked as read
+    end
