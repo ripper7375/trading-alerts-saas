@@ -1,6 +1,7 @@
 erDiagram
     User ||--o{ Account : "has"
     User ||--o{ Session : "has"
+    User ||--o{ VerificationToken : "has"
     User ||--o{ Alert : "creates"
     User ||--o{ Watchlist : "owns"
     User ||--o{ UserPreference : "has"
@@ -38,6 +39,12 @@ erDiagram
         string id PK "CUID"
         string sessionToken UK
         string userId FK
+        datetime expires
+    }
+    
+    VerificationToken {
+        string identifier
+        string token UK "Unique"
         datetime expires
     }
     
@@ -122,5 +129,25 @@ erDiagram
         int duration
         string symbol "Nullable"
         string timeframe "Nullable"
+        datetime createdAt
+    }
+    
+    IndicatorCache {
+        string id PK "CUID"
+        string symbol
+        string timeframe
+        datetime timestamp
+        string dataType
+        json data
+        datetime createdAt
+        datetime expiresAt
+    }
+    
+    SystemLog {
+        string id PK "CUID"
+        enum level "DEBUG/INFO/WARN/ERROR/FATAL"
+        string source
+        string message
+        json metadata "Nullable"
         datetime createdAt
     }

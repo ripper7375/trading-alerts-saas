@@ -1,0 +1,73 @@
+sequenceDiagram
+    participant User
+    participant Browser
+    participant NextAPI as Next.js API
+    participant Redis
+    participant WSServer as WebSocket Server
+    participant BackgroundJob
+
+    rect rgb(200, 220, 240)
+        Note over User,BackgroundJob: WEBSOCKET CONNECTION ESTABLISHMENT
+        User->>Browser: Open dashboard page
+        Browser->>WSServer: Connect WebSocket<br/>ws://localhost:3001
+        WSServer->>WSServer: Authenticate user<br/>(validate JWT from handshake)
+        WSServer->>Redis: SUBSCRIBE channel:user:{userId}
+        Redis-->>WSServer: Subscription confirmed
+        WSServer-->>Browser: Connection established<br/>{connectionId, status: 'connected'}
+        Browser->>Browser: Store WebSocket instance
+        Browser-->>User: Dashboard ready with live updates
+    end
+    
+    rect rgb(220, 240, 220)
+        Note over User,BackgroundJob: REAL-TIME ALERT NOTIFICATION
+        BackgroundJob->>BackgroundJob: Alert condition met<br/>(price crossed support line)
+        BackgroundJob->>Redis: PUBLISH channel:user:clxxx123<br/>{type: 'alert', data: {...}}
+        Redis->>WSServer: Deliver message to subscriber
+        WSServer->>WSServer: Format notification payload
+        WSServer->>Browser: EMIT 'notification'<br/>{type: 'alert', title: 'Price Alert', ...}
+        Browser->>Browser: Display toast notification
+        Browser->>Browser: Play notification sound
+        Browser->>Browser: Update alert badge count
+        Browser-->>User: Visual + audio notification
+        
+        Browser->>NextAPI: PUT /api/notifications/{id}/read<br/>(mark as read after user clicks)
+        NextAPI-->>Browser: 200 OK
+    end
+    
+    rect rgb(240, 220, 220)
+        Note over User,BackgroundJob: REAL-TIME PRICE UPDATES
+        BackgroundJob->>BackgroundJob: Fetch latest price data<br/>(every 60 seconds)
+        BackgroundJob->>Redis: PUBLISH channel:price:EURUSD<br/>{symbol: 'EURUSD', price: 1.0850, ...}
+        Redis->>WSServer: Deliver to all subscribers
+        WSServer->>Browser: EMIT 'price-update'<br/>{symbol, price, timestamp}
+        Browser->>Browser: Update chart with new candle
+        Browser-->>User: Chart updates automatically
+    end
+    
+    rect rgb(240, 240, 200)
+        Note over User,BackgroundJob: SYSTEM STATUS BROADCAST
+        NextAPI->>NextAPI: Detect system maintenance<br/>(scheduled downtime)
+        NextAPI->>Redis: PUBLISH channel:system:all<br/>{type: 'maintenance', message: '...'}
+        Redis->>WSServer: Broadcast to all connections
+        WSServer->>Browser: EMIT 'system-notification'<br/>{type: 'maintenance', ...}
+        Browser->>Browser: Display banner notification
+        Browser-->>User: "System maintenance in 10 minutes"
+    end
+    
+    rect rgb(220, 220, 240)
+        Note over User,BackgroundJob: CONNECTION MANAGEMENT
+        User->>Browser: Close tab / navigate away
+        Browser->>WSServer: Disconnect WebSocket
+        WSServer->>Redis: UNSUBSCRIBE channel:user:{userId}
+        WSServer->>WSServer: Clean up connection metadata
+        WSServer->>WSServer: Log disconnection event
+        
+        Note over Browser,WSServer: Automatic Reconnection on Network Failure
+        WSServer--xBrowser: Network interruption
+        Browser->>Browser: Detect disconnection
+        Browser->>Browser: Wait 5 seconds + exponential backoff
+        Browser->>WSServer: Reconnect WebSocket
+        WSServer->>Redis: Re-subscribe to channels
+        WSServer-->>Browser: Reconnection successful
+        Browser-->>User: "Connection restored"
+    end

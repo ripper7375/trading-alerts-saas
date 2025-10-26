@@ -5,6 +5,7 @@ graph TB
         Alerts["🔔 Alerts Page"]
         Settings["⚙️ Settings Page"]
         Admin["👑 Admin Page"]
+        Pricing["💰 Pricing Page"]
     end
     
     subgraph NextJS["Next.js Application Container"]
@@ -12,6 +13,7 @@ graph TB
             TradingChart["TradingView Charts<br/>(lightweight-charts)"]
             Forms["React Hook Forms<br/>(Zod validation)"]
             StateManagement["State Management<br/>(Zustand + React Query)"]
+            WSClient["WebSocket Client<br/>(Socket.IO Client)"]
         end
         
         subgraph APILayer["API Layer (Next.js Routes)"]
@@ -19,8 +21,14 @@ graph TB
             UserAPI["/api/user/*<br/>User management"]
             IndicatorAPI["/api/indicators/*<br/>Indicator data"]
             AlertAPI["/api/alerts/*<br/>Alert management"]
+            WatchlistAPI["/api/watchlist/*<br/>Watchlist management"]
+            NotificationAPI["/api/notifications/*<br/>Notifications"]
             AdminAPI["/api/admin/*<br/>Admin operations"]
-            SubAPI["/api/subscription/*<br/>Billing & subscription"]
+            SubAPI["/api/subscription<br/>Subscription info"]
+            CheckoutAPI["/api/checkout<br/>Stripe checkout sessions"]
+            WebhookAPI["/api/webhooks/stripe<br/>Payment webhooks"]
+            InvoiceAPI["/api/invoices<br/>Invoice history"]
+            HealthAPI["/api/health<br/>System health"]
         end
         
         subgraph Auth["Authentication Layer"]
@@ -33,7 +41,14 @@ graph TB
             MT5Client["MT5 Client<br/>(Flask API caller)"]
             AlertChecker["Alert Checker<br/>(Background jobs)"]
             EmailService["Email Service<br/>(Resend)"]
+            StripeService["Stripe Service<br/>(Payment processing)"]
         end
+    end
+    
+    subgraph WebSocketServer["WebSocket Server Container"]
+        SocketIO["Socket.IO Server<br/>(Real-time engine)"]
+        ConnectionMgr["Connection Manager<br/>(User sessions)"]
+        EventEmitter["Event Emitter<br/>(Notifications)"]
     end
     
     subgraph Flask["Flask MT5 Service Container"]
@@ -50,19 +65,34 @@ graph TB
     
     Browser --> Frontend
     Frontend --> APILayer
+    Frontend --> WSClient
+    WSClient -.->|"WebSocket"| SocketIO
+    
     APILayer --> Auth
     APILayer --> Services
     Auth --> NextAuth
+    
     Services --> MT5Client
     Services --> EmailService
+    Services --> StripeService
+    
     MT5Client --> FlaskAPI
     FlaskAPI --> MT5Connection
     MT5Connection --> BufferReader
+    
     APILayer --> Prisma
     Prisma --> PostgresDB
+    
     Services --> RedisCache
+    Services -.->|"Publish events"| RedisCache
+    
+    SocketIO --> ConnectionMgr
+    SocketIO --> EventEmitter
+    SocketIO -.->|"Subscribe"| RedisCache
+    EventEmitter -.->|"Emit to clients"| WSClient
     
     style Browser fill:#E3F2FD,stroke:#1976D2
     style NextJS fill:#F3E5F5,stroke:#7B1FA2
+    style WebSocketServer fill:#EDE7F6,stroke:#5E35B1
     style Flask fill:#E8F5E9,stroke:#388E3C
     style DataLayer fill:#FFF3E0,stroke:#F57C00
