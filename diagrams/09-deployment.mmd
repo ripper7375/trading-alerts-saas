@@ -1,69 +1,109 @@
 graph TB
-    subgraph Dev["💻 Development Environment"]
-        DevMachine["Developer Machine"]
-        DevDocker["Docker Compose<br/>- nextjs<br/>- flask<br/>- postgres<br/>- redis"]
-        DevMachine --> DevDocker
-    end
-    
-    subgraph GitHub["📦 GitHub Repository"]
-        Repo["trading-alerts-saas<br/>Main branch"]
-        Actions["GitHub Actions CI/CD"]
-        Repo --> Actions
-    end
-    
-    subgraph Production["☁️ Production Environment"]
-        subgraph Vercel["▲ Vercel (Next.js)"]
-            VercelEdge["Edge Network<br/>(Global CDN)"]
-            VercelFunctions["Serverless Functions<br/>(API Routes)<br/>Auto-scaling"]
-            VercelFrontend["Static Frontend<br/>(SSG/SSR)"]
+    subgraph "Week 1-2: Phase 2 - Early Infrastructure Setup (CRITICAL!)"
+        DEV[Local Development]
+        GH[GitHub Repository]
+        
+        subgraph "Railway Setup (Week 1!)"
+            RW_SETUP[Railway Account Created]
+            RW_PG[PostgreSQL Database<br/>Provisioned]
+            RW_URL[DATABASE_URL<br/>Obtained]
         end
         
-        subgraph Railway["🚂 Railway (Backend Services)"]
-            RailwayFlask["Flask Container<br/>(Dockerized)<br/>Auto-scaling<br/>Health checks"]
-            RailwayPostgres["Managed PostgreSQL<br/>(Persistent storage)<br/>Automated backups"]
+        subgraph "Prisma Foundation (Week 1!)"
+            PRISMA_INIT[Prisma Initialized]
+            FIRST_MIG[First Migration<br/>User Table]
+            MIG_LOCAL[Migration Applied<br/>Locally]
+            MIG_RAILWAY[Migration Tested<br/>on Railway ✓]
         end
         
-        subgraph Upstash["⚡ Upstash (Optional)"]
-            UpstashRedis["Managed Redis<br/>(Global replication)<br/>Edge caching"]
+        DEV -->|Push code| GH
+        GH -->|Trigger setup| RW_SETUP
+        RW_SETUP -->|Provisions| RW_PG
+        RW_PG -->|Generates| RW_URL
+        RW_URL -->|Configure| PRISMA_INIT
+        PRISMA_INIT -->|Create| FIRST_MIG
+        FIRST_MIG -->|Test| MIG_LOCAL
+        MIG_LOCAL -->|Deploy| MIG_RAILWAY
+    end
+    
+    subgraph "Week 2-9: Phase 3 - Incremental Development"
+        DEV2[Feature Development]
+        
+        subgraph "Continuous Railway Testing"
+            ADD_TABLES[Add Tables to Schema]
+            MIG_DEV[Migrate Locally]
+            MIG_PROD[Test on Railway<br/>Immediately!]
+            VERIFY[Verify Sync ✓]
         end
         
-        subgraph External["🔌 External Services"]
-            Stripe["Stripe<br/>(Payments)"]
-            Resend["Resend<br/>(Email)"]
-            Sentry["Sentry<br/>(Error tracking)"]
+        DEV2 -->|Add features| ADD_TABLES
+        ADD_TABLES -->|prisma migrate dev| MIG_DEV
+        MIG_DEV -->|prisma migrate deploy| MIG_PROD
+        MIG_PROD -->|Check| VERIFY
+        VERIFY -->|Continue| DEV2
+    end
+    
+    MIG_RAILWAY -->|Database Ready| ADD_TABLES
+    
+    subgraph "Week 10-11: Phase 4 - Production Deployment (EASY!)"
+        subgraph "Vercel Deployment"
+            V_SETUP[Vercel Account]
+            V_CONNECT[Connect GitHub]
+            V_ENV[Configure Env Vars]
+            V_DEPLOY[Deploy Next.js]
         end
+        
+        subgraph "Railway Deployment (Already Setup!)"
+            R_FLASK[Add Flask Service]
+            R_ENV[Configure Env Vars]
+            R_DEPLOY[Deploy Flask]
+            R_DB_CHECK[Database Already<br/>Ready ✓]
+        end
+        
+        subgraph "Production Configuration"
+            CORS[Configure CORS]
+            STRIPE[Connect Stripe Webhooks]
+            MONITOR[Setup Monitoring]
+        end
+        
+        GH -->|Connect| V_CONNECT
+        V_CONNECT --> V_ENV
+        V_ENV -->|DATABASE_URL from Railway| V_DEPLOY
+        
+        GH -->|Add Service| R_FLASK
+        R_FLASK --> R_ENV
+        R_ENV --> R_DEPLOY
+        R_DB_CHECK -->|Already Tested| R_DEPLOY
+        
+        V_DEPLOY --> CORS
+        R_DEPLOY --> CORS
+        CORS --> STRIPE
+        STRIPE --> MONITOR
     end
     
-    subgraph MT5Setup["🖥️ MT5 Terminal (Separate Server)"]
-        MT5Server["VPS / Dedicated Server<br/>- Windows Server<br/>- MT5 Terminal running 24/7<br/>- Custom indicators attached<br/>- Flask service deployed"]
+    VERIFY -->|8 Weeks of Testing| R_DB_CHECK
+    
+    subgraph "Production Environment"
+        PROD_NEXT[Next.js on Vercel]
+        PROD_FLASK[Flask on Railway]
+        PROD_DB[PostgreSQL on Railway<br/>Tested Since Week 1!]
+        
+        PROD_NEXT -->|API Calls| PROD_FLASK
+        PROD_FLASK -->|Queries| PROD_DB
     end
     
-    DevDocker -->|"git push"| Repo
+    V_DEPLOY --> PROD_NEXT
+    R_DEPLOY --> PROD_FLASK
+    R_DB_CHECK --> PROD_DB
     
-    Actions -->|"Deploy"| Vercel
-    Actions -->|"Deploy Docker"| RailwayFlask
-    Actions -->|"Run migrations"| RailwayPostgres
+    classDef critical fill:#ff6b6b,stroke:#c92a2a,stroke-width:3px,color:#fff
+    classDef success fill:#51cf66,stroke:#2f9e44,stroke-width:2px,color:#000
+    classDef testing fill:#ffd43b,stroke:#fab005,stroke-width:2px,color:#000
     
-    VercelFrontend --> VercelEdge
-    VercelFunctions --> RailwayFlask
-    VercelFunctions --> RailwayPostgres
-    VercelFunctions --> UpstashRedis
+    class RW_SETUP,RW_PG,RW_URL,FIRST_MIG,MIG_RAILWAY critical
+    class VERIFY,MIG_PROD,R_DB_CHECK,PROD_DB success
+    class MIG_DEV,MIG_LOCAL testing
     
-    RailwayFlask -->|"HTTP + API Key"| MT5Server
-    RailwayFlask --> RailwayPostgres
-    RailwayFlask --> UpstashRedis
-    
-    VercelFunctions --> Stripe
-    VercelFunctions --> Resend
-    VercelFunctions --> Sentry
-    
-    Users["🌍 Global Users"] --> VercelEdge
-    
-    style Dev fill:#E8F5E9,stroke:#388E3C
-    style GitHub fill:#FFF3E0,stroke:#F57C00
-    style Production fill:#E3F2FD,stroke:#1976D2
-    style Vercel fill:#000000,stroke:#000000,color:#fff
-    style Railway fill:#0B0D0E,stroke:#0B0D0E,color:#fff
-    style Upstash fill:#00E9A3,stroke:#00C389,color:#000
-    style External fill:#F3E5F5,stroke:#7B1FA2
-    style MT5Setup fill:#FFE0B2,stroke:#E65100
+    style DEV fill:#e3f2fd
+    style DEV2 fill:#e3f2fd
+    style GH fill:#f3e5f5
