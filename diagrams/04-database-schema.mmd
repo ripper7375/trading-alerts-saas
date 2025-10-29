@@ -1,7 +1,6 @@
 erDiagram
     User ||--o{ Account : "has"
     User ||--o{ Session : "has"
-    User ||--o{ VerificationToken : "has"
     User ||--o{ Alert : "creates"
     User ||--o{ Watchlist : "owns"
     User ||--o{ UserPreference : "has"
@@ -54,7 +53,7 @@ erDiagram
         string name "Nullable"
         string symbol
         string timeframe
-        enum alertType "PRICE_TOUCH_LINE, etc"
+        enum alertType "PRICE_TOUCH_LINE|PRICE_CROSS_LINE|FRACTAL_NEW|LINE_BREAK|INDICATOR_VALUE|CUSTOM"
         json condition
         boolean isActive
         datetime lastTriggered "Nullable"

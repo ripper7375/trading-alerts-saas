@@ -1,0 +1,237 @@
+sequenceDiagram
+    actor User
+    participant Browser
+    participant NextAPI as Next.js API
+    participant Redis
+    participant Flask as Flask MT5 Service
+    participant MT5 as MT5 Terminal
+    participant DB as PostgreSQL
+    participant Sentry as Error Tracking
+    participant Logger as System Logs
+    
+    rect rgb(255, 220, 220)
+        Note over User,Logger: SCENARIO 1: MT5 CONNECTION FAILURE
+        User->>Browser: Request chart data
+        Browser->>NextAPI: GET /api/indicators/EURUSD/M1
+        NextAPI->>NextAPI: Authenticate user ✓
+        NextAPI->>NextAPI: Check rate limit ✓
+        NextAPI->>Redis: Check cache
+        Redis-->>NextAPI: Cache miss
+        
+        NextAPI->>Flask: GET /api/indicators/EURUSD/M1<br/>X-API-Key: secret
+        Flask->>MT5: mt5.initialize()
+        MT5--xFlask: Connection failed ❌
+        
+        Flask->>Flask: Retry logic (3 attempts)<br/>Attempt 1: Wait 2s
+        Flask->>MT5: mt5.initialize()
+        MT5--xFlask: Connection failed ❌
+        
+        Flask->>Flask: Attempt 2: Wait 4s
+        Flask->>MT5: mt5.initialize()
+        MT5--xFlask: Connection failed ❌
+        
+        Flask->>Flask: Attempt 3: Wait 8s
+        Flask->>MT5: mt5.initialize()
+        MT5--xFlask: Connection failed ❌
+        
+        Flask->>Logger: Log ERROR<br/>"MT5_CONNECTION_FAILED"
+        Flask->>Sentry: captureException()<br/>Context: {symbol, timeframe, attempts: 3}
+        
+        Flask-->>NextAPI: 503 Service Unavailable<br/>{success: false, error: "MT5 terminal not accessible"}
+        
+        NextAPI->>NextAPI: Handle Flask error
+        NextAPI->>Logger: Log API error<br/>{endpoint, status: 503}
+        
+        NextAPI-->>Browser: 503 {error: "Trading data temporarily unavailable"}
+        Browser->>Browser: Display user-friendly error
+        Browser-->>User: Toast: "Unable to connect to trading terminal.<br/>Please try again in a moment."
+    end
+    
+    rect rgb(220, 240, 255)
+        Note over User,Logger: SCENARIO 2: FLASK SERVICE TIMEOUT
+        User->>Browser: Request indicator data
+        Browser->>NextAPI: GET /api/indicators/Boom-300/M1?bars=5000
+        NextAPI->>Flask: HTTP request (30s timeout)
+        
+        Note over Flask,MT5: Flask processing takes too long...
+        Flask->>MT5: Reading 5000 bars + indicators...
+        
+        NextAPI->>NextAPI: Timeout reached (30s) ⏱️
+        NextAPI-xFlask: Request timeout ❌
+        
+        NextAPI->>Logger: Log WARN<br/>"FLASK_TIMEOUT"<br/>{symbol, bars: 5000, timeout: 30s}
+        
+        NextAPI->>Redis: Store failure metric
+        Redis-->>NextAPI: Stored
+        
+        NextAPI-->>Browser: 504 Gateway Timeout<br/>{error: "Request took too long"}
+        Browser-->>User: Toast: "Request timed out.<br/>Try reducing data range."
+    end
+    
+    rect rgb(255, 240, 220)
+        Note over User,Logger: SCENARIO 3: DATABASE ERROR
+        User->>Browser: Create new alert
+        Browser->>NextAPI: POST /api/alerts<br/>{symbol, alertType, condition}
+        NextAPI->>NextAPI: Authenticate ✓
+        NextAPI->>NextAPI: Validate input (Zod) ✓
+        
+        NextAPI->>DB: INSERT INTO Alert
+        DB--xNextAPI: Connection pool exhausted ❌
+        
+        NextAPI->>NextAPI: Catch PrismaClientKnownRequestError
+        NextAPI->>Logger: Log ERROR<br/>"DATABASE_CONNECTION_FAILED"
+        NextAPI->>Sentry: captureException()<br/>Error: "Connection pool exhausted"
+        
+        NextAPI->>NextAPI: Retry with backoff<br/>Attempt 1: Wait 1s
+        NextAPI->>DB: INSERT INTO Alert
+        DB-->>NextAPI: Success ✓
+        
+        NextAPI-->>Browser: 201 Created<br/>{success: true, alert}
+        Browser-->>User: "Alert created successfully"
+    end
+    
+    rect rgb(240, 255, 240)
+        Note over User,Logger: SCENARIO 4: REDIS CACHE FAILURE (Graceful Degradation)
+        User->>Browser: Request chart data
+        Browser->>NextAPI: GET /api/indicators/EURUSD/M1
+        
+        NextAPI->>Redis: GET indicators:EURUSD:M1
+        Redis--xNextAPI: Connection refused ❌
+        
+        NextAPI->>NextAPI: Catch Redis error
+        NextAPI->>Logger: Log WARN<br/>"REDIS_UNAVAILABLE"<br/>Degrading to direct fetch
+        
+        Note over NextAPI: Continue without cache
+        NextAPI->>Flask: GET /api/indicators/EURUSD/M1
+        Flask-->>NextAPI: 200 OK {data}
+        
+        NextAPI->>NextAPI: Skip cache write<br/>(Redis unavailable)
+        
+        NextAPI-->>Browser: 200 OK {data, cached: false}
+        Browser-->>User: Chart displays normally<br/>(slightly slower, no error shown)
+        
+        NextAPI->>Sentry: captureMessage()<br/>"Redis unavailable - degraded mode"
+    end
+    
+    rect rgb(255, 230, 255)
+        Note over User,Logger: SCENARIO 5: RATE LIMIT EXCEEDED
+        User->>Browser: Rapid requests (100+ per minute)
+        Browser->>NextAPI: GET /api/indicators/... (Request #101)
+        
+        NextAPI->>NextAPI: Authenticate ✓
+        NextAPI->>Redis: Check rate limit<br/>Key: ratelimit:user:clxxx123
+        Redis-->>NextAPI: Count: 101 (limit: 100)
+        
+        NextAPI->>NextAPI: Rate limit exceeded ❌
+        NextAPI->>Logger: Log WARN<br/>"RATE_LIMIT_EXCEEDED"<br/>{userId, count: 101}
+        
+        NextAPI-->>Browser: 429 Too Many Requests<br/>{error: "Rate limit exceeded",<br/>retryAfter: 3600}
+        
+        Browser->>Browser: Display rate limit UI
+        Browser-->>User: Banner: "Rate limit reached.<br/>Please wait 1 hour or upgrade to PRO."<br/>[Upgrade Button]
+    end
+    
+    rect rgb(255, 245, 220)
+        Note over User,Logger: SCENARIO 6: VALIDATION ERROR
+        User->>Browser: Create alert with invalid data
+        Browser->>NextAPI: POST /api/alerts<br/>{symbol: "", timeframe: "INVALID"}
+        
+        NextAPI->>NextAPI: Authenticate ✓
+        NextAPI->>NextAPI: Validate with Zod
+        
+        NextAPI->>NextAPI: Validation failed ❌<br/>- symbol: Required<br/>- timeframe: Invalid enum
+        
+        NextAPI-->>Browser: 400 Bad Request<br/>{error: "Validation failed",<br/>details: [{field, message}]}
+        
+        Browser->>Browser: Parse validation errors
+        Browser->>Browser: Highlight form fields in red
+        Browser-->>User: Show inline errors:<br/>• "Symbol is required"<br/>• "Invalid timeframe"
+        
+        Note over Browser: No server logging (expected error)
+    end
+    
+    rect rgb(230, 230, 255)
+        Note over User,Logger: SCENARIO 7: AUTHENTICATION FAILURE
+        User->>Browser: Access protected route
+        Browser->>NextAPI: GET /api/alerts<br/>Cookie: expired-session-token
+        
+        NextAPI->>NextAPI: Verify JWT token
+        NextAPI->>NextAPI: Token expired ❌
+        
+        NextAPI-->>Browser: 401 Unauthorized<br/>{error: "Session expired"}
+        
+        Browser->>Browser: Clear local session
+        Browser->>Browser: Redirect to /login?from=/alerts
+        Browser-->>User: Redirect to login page<br/>Toast: "Session expired. Please login."
+        
+        Note over NextAPI,Logger: No error logging (expected flow)
+    end
+    
+    rect rgb(255, 235, 235)
+        Note over User,Logger: SCENARIO 8: INDICATOR NOT FOUND
+        User->>Browser: Request data for unconfigured symbol
+        Browser->>NextAPI: GET /api/indicators/BITCOIN/M1
+        NextAPI->>Flask: GET /api/indicators/BITCOIN/M1
+        
+        Flask->>MT5: mt5.symbol_select("BITCOIN", True)
+        MT5-->>Flask: Symbol not found ❌
+        
+        Flask->>Logger: Log INFO<br/>"SYMBOL_NOT_FOUND"<br/>{symbol: "BITCOIN"}
+        
+        Flask-->>NextAPI: 404 Not Found<br/>{success: false,<br/>error: "Symbol not found in MT5"}
+        
+        NextAPI-->>Browser: 404 Not Found<br/>{error: "Symbol not available"}
+        
+        Browser-->>User: Alert: "Symbol 'BITCOIN' is not available.<br/>Please check symbol name."
+    end
+    
+    rect rgb(240, 240, 240)
+        Note over User,Logger: SCENARIO 9: CRITICAL SYSTEM ERROR (Catch-All)
+        User->>Browser: Trigger unexpected error
+        Browser->>NextAPI: POST /api/alerts<br/>{...malformed data...}
+        
+        NextAPI->>NextAPI: Unhandled exception ⚠️<br/>TypeError: Cannot read property
+        
+        NextAPI->>NextAPI: Global error handler catches
+        NextAPI->>Logger: Log FATAL<br/>"UNHANDLED_EXCEPTION"<br/>{stack, context}
+        NextAPI->>Sentry: captureException()<br/>Full stack trace + user context
+        
+        NextAPI->>DB: INSERT SystemLog<br/>{level: FATAL, message, metadata}
+        
+        NextAPI-->>Browser: 500 Internal Server Error<br/>{error: "An unexpected error occurred"}
+        
+        Browser-->>User: Error page:<br/>"Something went wrong.<br/>Our team has been notified."<br/>[Try Again] [Contact Support]
+        
+        Note over Sentry: Alert sent to developers
+    end
+    
+    rect rgb(220, 255, 220)
+        Note over User,Logger: SCENARIO 10: RECOVERY & RETRY SUCCESS
+        User->>Browser: Request after previous failure
+        Browser->>NextAPI: GET /api/indicators/EURUSD/M1<br/>(Retry attempt)
+        
+        NextAPI->>Flask: GET /api/indicators/EURUSD/M1
+        Flask->>MT5: mt5.initialize()
+        MT5-->>Flask: Connected ✓
+        
+        Flask->>MT5: Fetch indicator data
+        MT5-->>Flask: Data retrieved ✓
+        
+        Flask-->>NextAPI: 200 OK {success: true, data}
+        NextAPI->>Redis: Cache result
+        NextAPI-->>Browser: 200 OK {data}
+        
+        Browser-->>User: Chart displays successfully<br/>Toast: "Connection restored ✓"
+        
+        NextAPI->>Logger: Log INFO<br/>"RECOVERY_SUCCESS"<br/>Previous failure resolved
+    end
+
+    style User fill:#4CAF50,stroke:#2E7D32,color:#fff
+    style Browser fill:#2196F3,stroke:#0D47A1,color:#fff
+    style NextAPI fill:#9C27B0,stroke:#4A148C,color:#fff
+    style Flask fill:#FF9800,stroke:#E65100,color:#fff
+    style MT5 fill:#607D8B,stroke:#37474F,color:#fff
+    style DB fill:#00BCD4,stroke:#006064,color:#fff
+    style Redis fill:#F44336,stroke:#C62828,color:#fff
+    style Sentry fill:#6A1B9A,stroke:#4A148C,color:#fff
+    style Logger fill:#795548,stroke:#4E342E,color:#fff
