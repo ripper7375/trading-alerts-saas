@@ -1,91 +1,111 @@
-gantt
-    title Trading Alerts SaaS - Implementation Timeline (Updated - Migration Hell Prevention)
-    dateFormat YYYY-MM-DD
-    axisFormat Week %W
-    
-    section Phase 0-1: Local Setup
-    Install Dev Tools           :done, phase01, 2025-01-27, 1d
-    VSCode Extensions           :done, phase01b, 2025-01-27, 1d
-    MT5 Setup                   :done, phase01c, 2025-01-28, 1d
-    Tool Verification           :done, phase01d, 2025-01-28, 1d
-    
-    section Phase 1: Documentation
-    OpenAPI Specs               :done, phase11, 2025-01-29, 2d
-    Mermaid Diagrams            :done, phase12, 2025-01-30, 2d
-    Architecture Docs           :done, phase13, 2025-01-31, 1d
-    CURRENT-CONTEXT.md          :done, phase14, 2025-02-01, 1d
-    
-    section Phase 2: CI/CD & Database Foundation (CRITICAL!)
-    GitHub Actions              :active, phase21, 2025-02-02, 2d
-    GitHub Secrets              :active, phase22, 2025-02-03, 1d
-    Railway PostgreSQL Setup    :crit, phase23, 2025-02-04, 1d
-    Prisma Foundation           :crit, phase24, 2025-02-05, 2d
-    First Migration to Railway  :crit, phase25, 2025-02-06, 1d
-    Docker Config               :phase26, 2025-02-07, 2d
-    Testing Setup               :phase27, 2025-02-08, 1d
-    
-    section Phase 3.1: Next.js Foundation
-    Create Next.js Project      :phase311, 2025-02-10, 2d
-    TypeScript Config           :phase312, 2025-02-11, 1d
-    Tailwind Setup              :phase313, 2025-02-12, 1d
-    Dev Server Test             :phase314, 2025-02-13, 1d
-    
-    section Phase 3.2: Authentication (Simplified!)
-    Install NextAuth            :phase321, 2025-02-15, 1d
-    Auth Pages                  :phase322, 2025-02-16, 2d
-    Add Auth Tables to Prisma   :phase323, 2025-02-17, 1d
-    Migrate to Railway          :crit, phase324, 2025-02-18, 1d
-    Test Auth Flow              :phase325, 2025-02-19, 1d
-    
-    section Phase 3.3: Complete Database (Simplified!)
-    Add All Tables to Schema    :phase331, 2025-02-20, 2d
-    Test Locally                :phase332, 2025-02-21, 1d
-    Migrate to Railway          :crit, phase333, 2025-02-22, 1d
-    Verify Railway Sync         :crit, phase334, 2025-02-23, 1d
-    Prisma Studio Test          :phase335, 2025-02-24, 1d
-    
-    section Phase 3.4: Flask MT5 Service (With Seed Code!)
-    Port market_ai_engine       :phase341, 2025-02-24, 2d
-    MT5 Connection              :phase342, 2025-02-25, 1d
-    Indicator Reading           :phase343, 2025-02-26, 2d
-    Flask API Routes            :phase344, 2025-02-27, 2d
-    Docker Flask                :phase345, 2025-02-28, 1d
-    Integration Test            :phase346, 2025-03-01, 1d
-    
-    section Phase 3.5: Frontend Components
-    UI Components               :phase351, 2025-03-03, 5d
-    Dashboard Layout            :phase352, 2025-03-05, 3d
-    Alert Management UI         :phase353, 2025-03-07, 3d
-    
-    section Phase 3.6: TradingView Charts
-    Install Lightweight Charts  :phase361, 2025-03-10, 1d
-    Chart Component             :phase362, 2025-03-11, 3d
-    Connect to Flask API        :phase363, 2025-03-13, 2d
-    Real-time Updates           :phase364, 2025-03-15, 2d
-    
-    section Phase 3.7: E-commerce
-    Stripe Integration          :phase371, 2025-03-17, 3d
-    Subscription Management     :phase372, 2025-03-19, 3d
-    Webhook Handling            :phase373, 2025-03-21, 2d
-    
-    section Phase 3.8: Email Integration
-    Resend Setup                :phase381, 2025-03-24, 1d
-    Email Templates             :phase382, 2025-03-25, 2d
-    Notification Flow           :phase383, 2025-03-27, 2d
-    
-    section Phase 3.9: Admin Dashboard
-    Admin Routes                :phase391, 2025-03-31, 3d
-    User Management             :phase392, 2025-04-02, 3d
-    Analytics Views             :phase393, 2025-04-04, 2d
-    
-    section Phase 4: Validation & Deployment (Easy - Railway Already Tested!)
-    Pre-deployment Testing      :phase41, 2025-04-07, 3d
-    Verify Railway Ready        :crit, phase42, 2025-04-09, 1d
-    Vercel Frontend Deploy      :phase43, 2025-04-10, 1d
-    Railway Flask Deploy        :phase44, 2025-04-11, 1d
-    Production Config           :phase45, 2025-04-12, 1d
-    Monitoring Setup            :phase46, 2025-04-13, 1d
-    
-    section Phase 5: Ongoing
-    Feature Development         :phase51, 2025-04-14, 30d
-    Bug Fixes & Optimization    :phase52, 2025-04-14, 30d
+title Trading Alerts SaaS - Implementation Timeline (Updated - Migration Hell Prevention + Error Handling)
+dateFormat YYYY-MM-DD
+axisFormat Week %W
+
+section Phase 0-1: Local Setup
+Install Dev Tools           :done, phase01, 2025-01-27, 1d
+VSCode Extensions           :done, phase01b, 2025-01-27, 1d
+MT5 Setup                   :done, phase01c, 2025-01-28, 1d
+Tool Verification           :done, phase01d, 2025-01-28, 1d
+
+section Phase 1: Documentation
+OpenAPI Specs               :done, phase11, 2025-01-29, 2d
+Mermaid Diagrams            :done, phase12, 2025-01-30, 2d
+Architecture Docs           :done, phase13, 2025-01-31, 1d
+CURRENT-CONTEXT.md          :done, phase14, 2025-02-01, 1d
+Error Handling Diagram      :done, phase15, 2025-02-01, 1d
+
+section Phase 2: CI/CD & Database Foundation (CRITICAL!)
+GitHub Actions              :active, phase21, 2025-02-02, 2d
+GitHub Secrets              :active, phase22, 2025-02-03, 1d
+Railway PostgreSQL Setup    :crit, phase23, 2025-02-04, 1d
+Prisma Foundation           :crit, phase24, 2025-02-05, 2d
+First Migration to Railway  :crit, phase25, 2025-02-06, 1d
+Docker Config               :phase26, 2025-02-07, 2d
+Testing Setup               :phase27, 2025-02-08, 1d
+Error Logging Setup         :phase28, 2025-02-09, 1d
+SystemLog Table             :phase29, 2025-02-09, 1d
+
+section Phase 3.1: Next.js Foundation
+Create Next.js Project      :phase311, 2025-02-10, 2d
+TypeScript Config           :phase312, 2025-02-11, 1d
+Tailwind Setup              :phase313, 2025-02-12, 1d
+Dev Server Test             :phase314, 2025-02-13, 1d
+Global Error Handler        :phase315, 2025-02-14, 1d
+Error Utilities             :phase316, 2025-02-14, 1d
+
+section Phase 3.2: Authentication (Simplified!)
+Install NextAuth            :phase321, 2025-02-15, 1d
+Auth Pages                  :phase322, 2025-02-16, 2d
+Add Auth Tables to Prisma   :phase323, 2025-02-17, 1d
+Migrate to Railway          :crit, phase324, 2025-02-18, 1d
+Test Auth Flow              :phase325, 2025-02-19, 1d
+Auth Error Handling         :phase326, 2025-02-20, 1d
+
+section Phase 3.3: Complete Database (Simplified!)
+Add All Tables to Schema    :phase331, 2025-02-21, 2d
+Test Locally                :phase332, 2025-02-22, 1d
+Migrate to Railway          :crit, phase333, 2025-02-23, 1d
+Verify Railway Sync         :crit, phase334, 2025-02-24, 1d
+Prisma Studio Test          :phase335, 2025-02-25, 1d
+DB Error Handling           :phase336, 2025-02-26, 1d
+
+section Phase 3.4: Flask MT5 Service (With Seed Code!)
+Port market_ai_engine       :phase341, 2025-02-27, 2d
+MT5 Connection              :phase342, 2025-02-28, 1d
+MT5 Retry Logic             :phase343, 2025-03-01, 1d
+Indicator Reading           :phase344, 2025-03-02, 2d
+Flask API Routes            :phase345, 2025-03-04, 2d
+Flask Error Handlers        :phase346, 2025-03-06, 1d
+Docker Flask                :phase347, 2025-03-07, 1d
+Integration Test            :phase348, 2025-03-08, 1d
+
+section Phase 3.5: Frontend Components
+UI Components               :phase351, 2025-03-10, 5d
+Dashboard Layout            :phase352, 2025-03-12, 3d
+Alert Management UI         :phase353, 2025-03-14, 3d
+User Error Messages         :phase354, 2025-03-16, 1d
+Error Boundary Components   :phase355, 2025-03-17, 1d
+
+section Phase 3.6: TradingView Charts
+Install Lightweight Charts  :phase361, 2025-03-18, 1d
+Chart Component             :phase362, 2025-03-19, 3d
+Connect to Flask API        :phase363, 2025-03-21, 2d
+Real-time Updates           :phase364, 2025-03-23, 2d
+Chart Error Handling        :phase365, 2025-03-25, 1d
+
+section Phase 3.7: E-commerce
+Stripe Integration          :phase371, 2025-03-26, 3d
+Subscription Management     :phase372, 2025-03-28, 3d
+Webhook Handling            :phase373, 2025-03-30, 2d
+Payment Error Recovery      :phase374, 2025-04-01, 1d
+
+section Phase 3.8: Email Integration
+Resend Setup                :phase381, 2025-04-02, 1d
+Email Templates             :phase382, 2025-04-03, 2d
+Notification Flow           :phase383, 2025-04-05, 2d
+Email Failure Handling      :phase384, 2025-04-07, 1d
+
+section Phase 3.9: Admin Dashboard
+Admin Routes                :phase391, 2025-04-08, 3d
+User Management             :phase392, 2025-04-10, 3d
+Analytics Views             :phase393, 2025-04-12, 2d
+Error Log Viewer            :phase394, 2025-04-14, 1d
+System Health Dashboard     :phase395, 2025-04-15, 1d
+
+section Phase 4: Validation & Deployment (Easy - Railway Already Tested!)
+Pre-deployment Testing      :phase41, 2025-04-16, 3d
+Verify Railway Ready        :crit, phase42, 2025-04-18, 1d
+Sentry Integration          :phase43, 2025-04-19, 1d
+Vercel Frontend Deploy      :phase44, 2025-04-20, 1d
+Railway Flask Deploy        :phase45, 2025-04-21, 1d
+Production Config           :phase46, 2025-04-22, 1d
+Monitoring Setup            :phase47, 2025-04-23, 1d
+Error Alerting              :phase48, 2025-04-24, 1d
+Load Testing                :phase49, 2025-04-25, 1d
+
+section Phase 5: Ongoing
+Feature Development         :phase51, 2025-04-26, 30d
+Bug Fixes & Optimization    :phase52, 2025-04-26, 30d
+Error Monitoring            :phase53, 2025-04-26, 30d
+Performance Tuning          :phase54, 2025-04-26, 30d

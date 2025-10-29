@@ -42,7 +42,7 @@ erDiagram
     }
     
     VerificationToken {
-        string identifier
+        string identifier "Email (not FK)"
         string token UK "Unique"
         datetime expires
     }
@@ -145,7 +145,7 @@ erDiagram
     SystemLog {
         string id PK "CUID"
         enum level "DEBUG/INFO/WARN/ERROR/FATAL"
-        string source
+        string source "api/job/webhook/flask"
         string message
         json metadata "Nullable"
         datetime createdAt
