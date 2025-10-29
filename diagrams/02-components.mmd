@@ -20,6 +20,7 @@ graph TB
         subgraph APILayer["API Layer (Next.js Routes)"]
             AuthAPI["/api/auth/*<br/>Authentication routes"]
             UserAPI["/api/user/*<br/>User management"]
+            UserAccountAPI["/api/user/account/*<br/>Account deletion"]
             IndicatorAPI["/api/indicators/*<br/>Indicator data"]
             AlertAPI["/api/alerts/*<br/>Alert management"]
             WatchlistAPI["/api/watchlist/*<br/>Watchlist management"]
@@ -87,6 +88,7 @@ graph TB
     APILayer --> Auth
     APILayer --> Services
     APILayer --> Monitoring
+    UserAccountAPI --> Prisma
     Auth --> NextAuth
     
     Services --> MT5Client
